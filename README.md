@@ -14,9 +14,6 @@ This branch contains a basic implementation of YOLOv6 trained on the dataset wit
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
 | all   | 72     | 112    | 0.375   | 0.189   | 0.209    | 0.153  | 0.054      |
-| ...   | ...    | ...    | ...     | ...     | ...      | ...    | ...        |
-
-![Image description](runs/inference/exp/val/Image550.jpg)
 
 ## Increased-Dataset Branch
 
