@@ -115,3 +115,9 @@ venv.bak/
 *.onnx
 *.pt
 *.engine
+
+#dataset
+data/dental_dataset
+
+#data cache
+.data_cache.json
