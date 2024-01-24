@@ -1,7 +1,7 @@
 # Please insure that your custom_dataset are put in same parent dir with YOLOv6_DIR
-train: data\dental_dataset\images\train # train images
-val: data\dental_dataset\images\val # val images
-test: data\dental_dataset\images\test # test images (optional)
+train: data\dental_dataset\extended\images\train # train images
+val: data\dental_dataset\extended\images\val # val images
+test: data\dental_dataset\extended\images\test # test images (optional)
 
 # whether it is coco dataset, only coco dataset should be set to True.
 is_coco: False
