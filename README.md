@@ -20,3 +20,11 @@ This branch contains a basic implementation of YOLOv6 trained on the dataset wit
 ## Increased-Dataset Branch
 
 This branch contains the same implementation as main, except the dataset has been increased in size to 1438 through a process of rotating and flipping images
+
+# 500 epochs
+
+9.2 hours
+
+| Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
+| ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
+| all   | 122    | 117    | 0.27    | 0.301   | 0.27     | 0.201  | 0.0723     |
