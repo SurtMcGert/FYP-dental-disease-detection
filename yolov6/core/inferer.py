@@ -20,6 +20,7 @@ from yolov6.data.datasets import LoadData
 from yolov6.utils.nms import non_max_suppression
 from yolov6.utils.torch_utils import get_model_info
 
+
 class Inferer:
     def __init__(self, source, webcam, webcam_addr, weights, device, yaml, img_size, half):
 
@@ -33,7 +34,8 @@ class Inferer:
         self.model = DetectBackend(weights, device=self.device)
         self.stride = self.model.stride
         self.class_names = load_yaml(yaml)['names']
-        self.img_size = self.check_img_size(self.img_size, s=self.stride)  # check image size
+        self.img_size = self.check_img_size(
+            self.img_size, s=self.stride)  # check image size
         self.half = half
 
         # Switch model to deploy status
@@ -47,14 +49,14 @@ class Inferer:
             self.half = False
 
         if self.device.type != 'cpu':
-            self.model(torch.zeros(1, 3, *self.img_size).to(self.device).type_as(next(self.model.model.parameters())))  # warmup
+            self.model(torch.zeros(1, 6, *self.img_size).to(self.device).type_as(
+                next(self.model.model.parameters())))  # warmup
 
         # Load data
         self.webcam = webcam
         self.webcam_addr = webcam_addr
         self.files = LoadData(source, webcam, webcam_addr)
         self.source = source
-
 
     def model_switch(self, model, img_size):
         ''' Model switch to deploy status '''
@@ -72,14 +74,16 @@ class Inferer:
         vid_path, vid_writer, windows = None, None, []
         fps_calculator = CalcFPS()
         for img_src, img_path, vid_cap in tqdm(self.files):
-            img, img_src = self.process_image(img_src, self.img_size, self.stride, self.half)
+            img, img_src = self.process_image(
+                img_src, self.img_size, self.stride, self.half)
             img = img.to(self.device)
             if len(img.shape) == 3:
                 img = img[None]
                 # expand for batch dim
             t1 = time.time()
             pred_results = self.model(img)
-            det = non_max_suppression(pred_results, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
+            det = non_max_suppression(
+                pred_results, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
             t2 = time.time()
 
             if self.webcam:
@@ -87,12 +91,16 @@ class Inferer:
                 txt_path = osp.join(save_dir, self.webcam_addr)
             else:
                 # Create output files in nested dirs that mirrors the structure of the images' dirs
-                rel_path = osp.relpath(osp.dirname(img_path), osp.dirname(self.source))
-                save_path = osp.join(save_dir, rel_path, osp.basename(img_path))  # im.jpg
-                txt_path = osp.join(save_dir, rel_path, 'labels', osp.splitext(osp.basename(img_path))[0])
+                rel_path = osp.relpath(osp.dirname(
+                    img_path), osp.dirname(self.source))
+                save_path = osp.join(save_dir, rel_path,
+                                     osp.basename(img_path))  # im.jpg
+                txt_path = osp.join(save_dir, rel_path, 'labels', osp.splitext(
+                    osp.basename(img_path))[0])
                 os.makedirs(osp.join(save_dir, rel_path), exist_ok=True)
 
-            gn = torch.tensor(img_src.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+            # normalization gain whwh
+            gn = torch.tensor(img_src.shape)[[1, 0, 1, 0]]
             img_ori = img_src.copy()
 
             # check image and font
@@ -100,19 +108,23 @@ class Inferer:
             self.font_check()
 
             if len(det):
-                det[:, :4] = self.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
+                det[:, :4] = self.rescale(
+                    img.shape[2:], det[:, :4], img_src.shape).round()
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
-                        xywh = (self.box_convert(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                        xywh = (self.box_convert(torch.tensor(xyxy).view(
+                            1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf)
                         with open(txt_path + '.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
                     if save_img:
                         class_num = int(cls)  # integer class
-                        label = None if hide_labels else (self.class_names[class_num] if hide_conf else f'{self.class_names[class_num]} {conf:.2f}')
+                        label = None if hide_labels else (
+                            self.class_names[class_num] if hide_conf else f'{self.class_names[class_num]} {conf:.2f}')
 
-                        self.plot_box_and_label(img_ori, max(round(sum(img_ori.shape) / 2 * 0.003), 2), xyxy, label, color=self.generate_colors(class_num, True))
+                        self.plot_box_and_label(img_ori, max(round(sum(
+                            img_ori.shape) / 2 * 0.003), 2), xyxy, label, color=self.generate_colors(class_num, True))
 
                 img_src = np.asarray(img_ori)
 
@@ -134,8 +146,11 @@ class Inferer:
             if view_img:
                 if img_path not in windows:
                     windows.append(img_path)
-                    cv2.namedWindow(str(img_path), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
-                    cv2.resizeWindow(str(img_path), img_src.shape[1], img_src.shape[0])
+                    # allow window resize (Linux)
+                    cv2.namedWindow(
+                        str(img_path), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
+                    cv2.resizeWindow(
+                        str(img_path), img_src.shape[1], img_src.shape[0])
                 cv2.imshow(str(img_path), img_src)
                 cv2.waitKey(1)  # 1 millisecond
 
@@ -154,16 +169,46 @@ class Inferer:
                             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         else:  # stream
                             fps, w, h = 30, img_ori.shape[1], img_ori.shape[0]
-                        save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                        vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                        # force *.mp4 suffix on results videos
+                        save_path = str(Path(save_path).with_suffix('.mp4'))
+                        vid_writer = cv2.VideoWriter(
+                            save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer.write(img_src)
+
+    @staticmethod
+    def preProcess_image(img):
+        """function to enhance image and add extra edge detect layer"""
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # create a CLAHE object.
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
+        # apply CLAHE to the image
+        claheImg = clahe.apply(img)
+
+        # de-noise and blur CLAHE image
+        deNoise = cv2.fastNlMeansDenoising(claheImg, None, 20, 7, 30)
+        blur = cv2.GaussianBlur(deNoise, (5, 5), 5)
+
+        # apply canny edge detect
+        edgeDetectImg = cv2.Canny(blur, 45, 55)
+
+        # combine the images into a 2 channel image
+        claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+        edgeDetectImg = cv2.cvtColor(edgeDetectImg, cv2.COLOR_GRAY2BGR)
+        # Convert
+        claheImg = claheImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        edgeDetectImg = edgeDetectImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        channels = [claheImg, edgeDetectImg]
+        newImg = np.concatenate(channels, axis=0)
+        return newImg
 
     @staticmethod
     def process_image(img_src, img_size, stride, half):
         '''Process image before image inference.'''
         image = letterbox(img_src, img_size, stride=stride)[0]
         # Convert
-        image = image.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        image = Inferer.preProcess_image(image)
         image = torch.from_numpy(np.ascontiguousarray(image))
         image = image.half() if half else image.float()  # uint8 to fp16/32
         image /= 255  # 0 - 255 to 0.0 - 1.0
@@ -173,8 +218,10 @@ class Inferer:
     @staticmethod
     def rescale(ori_shape, boxes, target_shape):
         '''Rescale the output to the original image shape'''
-        ratio = min(ori_shape[0] / target_shape[0], ori_shape[1] / target_shape[1])
-        padding = (ori_shape[1] - target_shape[1] * ratio) / 2, (ori_shape[0] - target_shape[0] * ratio) / 2
+        ratio = min(ori_shape[0] / target_shape[0],
+                    ori_shape[1] / target_shape[1])
+        padding = (ori_shape[1] - target_shape[1] * ratio) / \
+            2, (ori_shape[0] - target_shape[0] * ratio) / 2
 
         boxes[:, [0, 2]] -= padding[0]
         boxes[:, [1, 3]] -= padding[1]
@@ -192,13 +239,15 @@ class Inferer:
         if isinstance(img_size, int):  # integer i.e. img_size=640
             new_size = max(self.make_divisible(img_size, int(s)), floor)
         elif isinstance(img_size, list):  # list i.e. img_size=[640, 480]
-            new_size = [max(self.make_divisible(x, int(s)), floor) for x in img_size]
+            new_size = [max(self.make_divisible(x, int(s)), floor)
+                        for x in img_size]
         else:
             raise Exception(f"Unsupported type of img_size: {type(img_size)}")
 
         if new_size != img_size:
-            print(f'WARNING: --img-size {img_size} must be multiple of max stride {s}, updating to {new_size}')
-        return new_size if isinstance(img_size,list) else [new_size]*2
+            print(
+                f'WARNING: --img-size {img_size} must be multiple of max stride {s}, updating to {new_size}')
+        return new_size if isinstance(img_size, list) else [new_size]*2
 
     def make_divisible(self, x, divisor):
         # Upward revision the value x to make it evenly divisible by the divisor.
@@ -221,7 +270,8 @@ class Inferer:
         text_size, _ = cv2.getTextSize(text, font, font_scale, font_thickness)
         text_w, text_h = text_size
         rec_start = tuple(x - y for x, y in zip(pos, offset))
-        rec_end = tuple(x + y for x, y in zip((x + text_w, y + text_h), offset))
+        rec_end = tuple(
+            x + y for x, y in zip((x + text_w, y + text_h), offset))
         cv2.rectangle(img, rec_start, rec_end, text_color_bg, -1)
         cv2.putText(
             img,
@@ -243,7 +293,8 @@ class Inferer:
         cv2.rectangle(image, p1, p2, color, thickness=lw, lineType=cv2.LINE_AA)
         if label:
             tf = max(lw - 1, 1)  # font thickness
-            w, h = cv2.getTextSize(label, 0, fontScale=lw / 3, thickness=tf)[0]  # text width, height
+            # text width, height
+            w, h = cv2.getTextSize(label, 0, fontScale=lw / 3, thickness=tf)[0]
             outside = p1[1] - h - 3 >= 0  # label fits outside box
             p2 = p1[0] + w, p1[1] - h - 3 if outside else p1[1] + h + 3
             cv2.rectangle(image, p1, p2, color, -1, cv2.LINE_AA)  # filled
@@ -276,10 +327,12 @@ class Inferer:
         palette = []
         for iter in hex:
             h = '#' + iter
-            palette.append(tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4)))
+            palette.append(tuple(int(h[1 + i:1 + i + 2], 16)
+                           for i in (0, 2, 4)))
         num = len(palette)
         color = palette[int(i) % num]
         return (color[2], color[1], color[0]) if bgr else color
+
 
 class CalcFPS:
     def __init__(self, nsamples: int = 50):

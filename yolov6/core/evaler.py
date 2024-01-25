@@ -76,7 +76,7 @@ class Evaler:
             LOGGER.info("Switch model to deploy modality.")
             LOGGER.info("Model Summary: {}".format(get_model_info(model, self.img_size)))
         if self.device.type != 'cpu':
-            model(torch.zeros(1, 3, self.img_size, self.img_size).to(self.device).type_as(next(model.parameters())))
+            model(torch.zeros(1, 6, self.img_size, self.img_size).to(self.device).type_as(next(model.parameters())))
         model.half() if self.half else model.float()
         return model
 
@@ -505,7 +505,7 @@ class Evaler:
 
         context, bindings, binding_addrs, trt_batch_size = init_engine(engine)
         assert trt_batch_size >= self.batch_size, f'The batch size you set is {self.batch_size}, it must <= tensorrt binding batch size {trt_batch_size}.'
-        tmp = torch.randn(self.batch_size, 3, self.img_size, self.img_size).to(self.device)
+        tmp = torch.randn(self.batch_size, 6, self.img_size, self.img_size).to(self.device)
         # warm up for 10 times
         for _ in range(10):
             binding_addrs['images'] = int(tmp.data_ptr())
@@ -518,7 +518,7 @@ class Evaler:
             nb_img = imgs.shape[0]
             if nb_img != self.batch_size:
                 # pad to tensorrt model setted batch size
-                zeros = torch.zeros(self.batch_size - nb_img, 3, *imgs.shape[2:])
+                zeros = torch.zeros(self.batch_size - nb_img, 6, *imgs.shape[2:])
                 imgs = torch.cat([imgs, zeros],0)
             t1 = time_sync()
             imgs = imgs.to(self.device, non_blocking=True)

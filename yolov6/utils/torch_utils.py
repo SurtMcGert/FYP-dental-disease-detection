@@ -77,7 +77,8 @@ def fuse_conv_and_bn(conv, bn):
     b_bn = bn.bias - bn.weight.mul(bn.running_mean).div(
         torch.sqrt(bn.running_var + bn.eps)
     )
-    fusedconv.bias.copy_(torch.mm(w_bn, b_conv.reshape(-1, 1)).reshape(-1) + b_bn)
+    fusedconv.bias.copy_(
+        torch.mm(w_bn, b_conv.reshape(-1, 1)).reshape(-1) + b_bn)
 
     return fusedconv
 
@@ -99,8 +100,9 @@ def get_model_info(model, img_size=640):
     Code base on https://github.com/Megvii-BaseDetection/YOLOX/blob/main/yolox/utils/model_utils.py
     """
     from thop import profile
-    stride = 64 #32
-    img = torch.zeros((1, 3, stride, stride), device=next(model.parameters()).device)
+    stride = 64  # 32
+    img = torch.zeros((1, 6, stride, stride),
+                      device=next(model.parameters()).device)
 
     flops, params = profile(deepcopy(model), inputs=(img,), verbose=False)
     params /= 1e6

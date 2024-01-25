@@ -36,7 +36,8 @@ from multiprocessing.pool import ThreadPool
 
 
 # Parameters
-IMG_FORMATS = ["bmp", "jpg", "jpeg", "png", "tif", "tiff", "dng", "webp", "mpo"]
+IMG_FORMATS = ["bmp", "jpg", "jpeg", "png",
+               "tif", "tiff", "dng", "webp", "mpo"]
 VID_FORMATS = ["mp4", "mov", "avi", "mkv"]
 IMG_FORMATS.extend([f.upper() for f in IMG_FORMATS])
 VID_FORMATS.extend([f.upper() for f in VID_FORMATS])
@@ -46,13 +47,17 @@ for k, v in ExifTags.TAGS.items():
         ORIENTATION = k
         break
 
+
 def img2label_paths(img_paths):
     # Define label paths as a function of image paths
-    sa, sb = f'{os.sep}images{os.sep}', f'{os.sep}labels{os.sep}'  # /images/, /labels/ substrings
+    # /images/, /labels/ substrings
+    sa, sb = f'{os.sep}images{os.sep}', f'{os.sep}labels{os.sep}'
     return [sb.join(x.rsplit(sa, 1)).rsplit('.', 1)[0] + '.txt' for x in img_paths]
+
 
 class TrainValDataset(Dataset):
     '''YOLOv6 train_loader/val_loader, loads images and labels for training and validation.'''
+
     def __init__(
         self,
         img_dir,
@@ -68,12 +73,13 @@ class TrainValDataset(Dataset):
         rank=-1,
         data_dict=None,
         task="train",
-        specific_shape = False,
+        specific_shape=False,
         height=1088,
         width=1920,
         cache_ram=False
     ):
-        assert task.lower() in ("train", "val", "test", "speed"), f"Not supported task: {task}"
+        assert task.lower() in ("train", "val", "test",
+                                "speed"), f"Not supported task: {task}"
         tik = time.time()
         self.__dict__.update(locals())
         self.main_process = self.rank in (-1, 0)
@@ -102,17 +108,18 @@ class TrainValDataset(Dataset):
             )  # batch indices of each image
 
             self.sort_files_shapes()
- 
+
         if self.cache_ram:
             self.num_imgs = len(self.img_paths)
-            self.imgs, self.imgs_hw0, self.imgs_hw = [None] * self.num_imgs, [None] * self.num_imgs, [None] * self.num_imgs
+            self.imgs, self.imgs_hw0, self.imgs_hw = [
+                None] * self.num_imgs, [None] * self.num_imgs, [None] * self.num_imgs
             self.cache_images(num_imgs=self.num_imgs)
 
         tok = time.time()
 
         if self.main_process:
             LOGGER.info(f"%.1fs for dataset initialization." % (tok - tik))
-    
+
     def cache_images(self, num_imgs=None):
         assert num_imgs is not None, "num_imgs must be specified as the size of the dataset"
 
@@ -122,7 +129,8 @@ class TrainValDataset(Dataset):
 
         if mem_required > mem.available:
             self.cache_ram = False
-            LOGGER.warning("Not enough RAM to cache images, caching is disabled.")
+            LOGGER.warning(
+                "Not enough RAM to cache images, caching is disabled.")
         else:
             LOGGER.warning(
                 f"{mem_required / gb:.1f}GB RAM required, "
@@ -132,21 +140,25 @@ class TrainValDataset(Dataset):
             )
 
         print(f"self.imgs: {len(self.imgs)}")
-        LOGGER.info("You are using cached images in RAM to accelerate training!")
+        LOGGER.info(
+            "You are using cached images in RAM to accelerate training!")
         LOGGER.info(
             "Caching images...\n"
             "This might take some time for your dataset"
         )
         num_threads = min(16, max(1, os.cpu_count() - 1))
-        load_imgs = ThreadPool(num_threads).imap(self.load_image, range(num_imgs))
-        pbar = tqdm(enumerate(load_imgs), total=num_imgs, disable=self.rank > 0)
+        load_imgs = ThreadPool(num_threads).imap(
+            self.load_image, range(num_imgs))
+        pbar = tqdm(enumerate(load_imgs), total=num_imgs,
+                    disable=self.rank > 0)
         for i, (x, (h0, w0), shape) in pbar:
-            self.imgs[i], self.imgs_hw0[i], self.imgs_hw[i] = x, (h0, w0), shape
+            self.imgs[i], self.imgs_hw0[i], self.imgs_hw[i] = x, (
+                h0, w0), shape
 
     def __del__(self):
         if self.cache_ram:
             del self.imgs
-        
+
     def cal_cache_occupy(self, num_imgs):
         '''estimate the memory required to cache images in RAM.
         '''
@@ -154,7 +166,8 @@ class TrainValDataset(Dataset):
         num_imgs = len(self.img_paths)
         num_samples = min(num_imgs, 32)
         for _ in range(num_samples):
-            img, _, _ = self.load_image(index=random.randint(0, len(self.img_paths) - 1))
+            img, _, _ = self.load_image(
+                index=random.randint(0, len(self.img_paths) - 1))
             cache_bytes += img.nbytes
         mem_required = cache_bytes * num_imgs / num_samples
         return mem_required
@@ -162,17 +175,17 @@ class TrainValDataset(Dataset):
     def __len__(self):
         """Get the length of dataset"""
         return len(self.img_paths)
- 
+
     def __getitem__(self, index):
         """Fetching a data sample for a given key.
         This function applies mosaic and mixup augments during training.
         During validation, letterbox augment is applied.
         """
         target_shape = (
-                (self.target_height, self.target_width) if self.specific_shape else
-                self.batch_shapes[self.batch_indices[index]] if self.rect
-                else self.img_size
-                )
+            (self.target_height, self.target_width) if self.specific_shape else
+            self.batch_shapes[self.batch_indices[index]] if self.rect
+            else self.img_size
+        )
 
         # Mosaic Augmentation
         if self.augment and random.random() < self.hyp["mosaic"]:
@@ -189,13 +202,16 @@ class TrainValDataset(Dataset):
         else:
             # Load image
             if self.hyp and "shrink_size" in self.hyp:
-                img, (h0, w0), (h, w) = self.load_image(index, self.hyp["shrink_size"])
+                img, (h0, w0), (h, w) = self.load_image(
+                    index, self.hyp["shrink_size"])
             else:
                 img, (h0, w0), (h, w) = self.load_image(index)
 
             # letterbox
-            img, ratio, pad = letterbox(img, target_shape, auto=False, scaleup=self.augment)
-            shapes = (h0, w0), ((h * ratio / h0, w * ratio / w0), pad)  # for COCO mAP rescaling
+            img, ratio, pad = letterbox(
+                img, target_shape, auto=False, scaleup=self.augment)
+            shapes = (h0, w0), ((h * ratio / h0, w * ratio / w0),
+                                pad)  # for COCO mAP rescaling
 
             labels = self.labels[index].copy()
             if labels.size:
@@ -248,12 +264,13 @@ class TrainValDataset(Dataset):
         if len(labels):
             labels_out[:, 1:] = torch.from_numpy(labels)
 
-        # Convert
-        img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        # add custom pre-processing
+        img = self.preProcess_image(img)
+
         img = np.ascontiguousarray(img)
 
         return torch.from_numpy(img), labels_out, self.img_paths[index], shapes
- 
+
     def load_image(self, index, shrink_size=None):
         """Load image.
         This function loads image by cv2, resize original image to target shape(img_size) with keeping ratio.
@@ -262,7 +279,7 @@ class TrainValDataset(Dataset):
             Image, original shape of image, resized image shape
         """
         path = self.img_paths[index]
-        
+
         if self.cache_ram and self.imgs[index] is not None:
             im = self.imgs[index]
             # im = copy.deepcopy(im)
@@ -273,7 +290,8 @@ class TrainValDataset(Dataset):
                 assert im is not None, f"opencv cannot read image correctly or {path} not exists"
             except Exception as e:
                 print(e)
-                im = cv2.cvtColor(np.asarray(Image.open(path)), cv2.COLOR_RGB2BGR)
+                im = cv2.cvtColor(np.asarray(
+                    Image.open(path)), cv2.COLOR_RGB2BGR)
                 assert im is not None, f"Image Not Found {path}, workdir: {os.getcwd()}"
             h0, w0 = im.shape[:2]  # origin shape
             if self.specific_shape:
@@ -286,15 +304,42 @@ class TrainValDataset(Dataset):
             else:
                 ratio = self.img_size / max(h0, w0)
             if ratio != 1:
-                    im = cv2.resize(
-                        im,
-                        (int(w0 * ratio), int(h0 * ratio)),
-                        interpolation=cv2.INTER_AREA
-                        if ratio < 1 and not self.augment
-                        else cv2.INTER_LINEAR,
-                    )
+                im = cv2.resize(
+                    im,
+                    (int(w0 * ratio), int(h0 * ratio)),
+                    interpolation=cv2.INTER_AREA
+                    if ratio < 1 and not self.augment
+                    else cv2.INTER_LINEAR,
+                )
             return im, (h0, w0), im.shape[:2]
-        
+
+    def preProcess_image(self, img):
+        """function to enhance image and add extra edge detect layer"""
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # create a CLAHE object.
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
+        # apply CLAHE to the image
+        claheImg = clahe.apply(img)
+
+        # de-noise and blur CLAHE image
+        deNoise = cv2.fastNlMeansDenoising(claheImg, None, 20, 7, 30)
+        blur = cv2.GaussianBlur(deNoise, (5, 5), 5)
+
+        # apply canny edge detect
+        edgeDetectImg = cv2.Canny(blur, 45, 55)
+
+        # combine the images into a 2 channel image
+        claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+        edgeDetectImg = cv2.cvtColor(edgeDetectImg, cv2.COLOR_GRAY2BGR)
+        # Convert
+        claheImg = claheImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        edgeDetectImg = edgeDetectImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        channels = [claheImg, edgeDetectImg]
+        newImg = np.concatenate(channels, axis=0)
+        return newImg
+
     @staticmethod
     def collate_fn(batch):
         """Merges a list of samples to form a mini-batch of Tensor(s)"""
@@ -308,12 +353,14 @@ class TrainValDataset(Dataset):
             img_dirs = [img_dirs]
         # we store the cache img file in the first directory of img_dirs
         valid_img_record = osp.join(
-            osp.dirname(img_dirs[0]), "." + osp.basename(img_dirs[0]) + "_cache.json"
+            osp.dirname(img_dirs[0]), "." +
+            osp.basename(img_dirs[0]) + "_cache.json"
         )
         NUM_THREADS = min(8, os.cpu_count())
         img_paths = []
         for img_dir in img_dirs:
-            assert osp.exists(img_dir), f"{img_dir} is an invalid directory path!"
+            assert osp.exists(
+                img_dir), f"{img_dir} is an invalid directory path!"
             img_paths += glob.glob(osp.join(img_dir, "**/*"), recursive=True)
 
         img_paths = sorted(
@@ -378,9 +425,11 @@ class TrainValDataset(Dataset):
             )
             with Pool(NUM_THREADS) as pool:
                 pbar = pool.imap(
-                    TrainValDataset.check_label_files, zip(img_paths, label_paths)
+                    TrainValDataset.check_label_files, zip(
+                        img_paths, label_paths)
                 )
-                pbar = tqdm(pbar, total=len(label_paths)) if self.main_process else pbar
+                pbar = tqdm(pbar, total=len(label_paths)
+                            ) if self.main_process else pbar
                 for (
                     img_path,
                     labels_per_file,
@@ -414,17 +463,21 @@ class TrainValDataset(Dataset):
                 )
 
         if self.task.lower() == "val":
-            if self.data_dict.get("is_coco", False): # use original json file when evaluating on coco dataset.
-                assert osp.exists(self.data_dict["anno_path"]), "Eval on coco dataset must provide valid path of the annotation file in config file: data/coco.yaml"
+            # use original json file when evaluating on coco dataset.
+            if self.data_dict.get("is_coco", False):
+                assert osp.exists(
+                    self.data_dict["anno_path"]), "Eval on coco dataset must provide valid path of the annotation file in config file: data/coco.yaml"
             else:
                 assert (
                     self.class_names
                 ), "Class names is required when converting labels to coco format for evaluating."
-                save_dir = osp.join(osp.dirname(osp.dirname(img_dirs[0])), "annotations")
+                save_dir = osp.join(osp.dirname(
+                    osp.dirname(img_dirs[0])), "annotations")
                 if not osp.exists(save_dir):
                     os.mkdir(save_dir)
                 save_path = osp.join(
-                    save_dir, "instances_" + osp.basename(img_dirs[0]) + ".json"
+                    save_dir, "instances_" +
+                    osp.basename(img_dirs[0]) + ".json"
                 )
                 TrainValDataset.generate_coco_format_labels(
                     img_info, self.class_names, save_path
@@ -463,7 +516,8 @@ class TrainValDataset(Dataset):
             hs.append(h)
             ws.append(w)
             labels.append(labels_per_img)
-        img, labels = mosaic_augmentation(shape, imgs, hs, ws, labels, self.hyp, self.specific_shape, self.target_height, self.target_width)
+        img, labels = mosaic_augmentation(
+            shape, imgs, hs, ws, labels, self.hyp, self.specific_shape, self.target_height, self.target_width)
         return img, labels
 
     def general_augment(self, img, labels):
@@ -528,7 +582,8 @@ class TrainValDataset(Dataset):
         try:
             im = Image.open(im_file)
             im.verify()  # PIL verify
-            im = Image.open(im_file)  # need to reload the image after using verify()
+            # need to reload the image after using verify()
+            im = Image.open(im_file)
             shape = (im.height, im.width)  # (height, width)
             try:
                 im_exif = im._getexif()
@@ -539,8 +594,10 @@ class TrainValDataset(Dataset):
             except:
                 im_exif = None
 
-            assert (shape[0] > 9) & (shape[1] > 9), f"image size {shape} <10 pixels"
-            assert im.format.lower() in IMG_FORMATS, f"invalid image format {im.format}"
+            assert (shape[0] > 9) & (
+                shape[1] > 9), f"image size {shape} <10 pixels"
+            assert im.format.lower(
+            ) in IMG_FORMATS, f"invalid image format {im.format}"
             if im.format.lower() in ("jpg", "jpeg"):
                 with open(im_file, "rb") as f:
                     f.seek(-2, 2)
@@ -558,7 +615,8 @@ class TrainValDataset(Dataset):
     @staticmethod
     def check_label_files(args):
         img_path, lb_path = args
-        nm, nf, ne, nc, msg = 0, 0, 0, 0, ""  # number (missing, found, empty, message
+        # number (missing, found, empty, message
+        nm, nf, ne, nc, msg = 0, 0, 0, 0, ""
         try:
             if osp.exists(lb_path):
                 nf = 1  # label found
@@ -663,13 +721,14 @@ class LoadData:
     def __init__(self, path, webcam, webcam_addr):
         self.webcam = webcam
         self.webcam_addr = webcam_addr
-        if webcam: # if use web camera
+        if webcam:  # if use web camera
             imgp = []
             vidp = [int(webcam_addr) if webcam_addr.isdigit() else webcam_addr]
         else:
             p = str(Path(path).resolve())  # os-agnostic absolute path
             if os.path.isdir(p):
-                files = sorted(glob.glob(os.path.join(p, '**/*.*'), recursive=True))  # dir
+                files = sorted(glob.glob(os.path.join(
+                    p, '**/*.*'), recursive=True))  # dir
             elif os.path.isfile(p):
                 files = [p]  # files
             else:
@@ -689,7 +748,8 @@ class LoadData:
         if self.webcam:
             file_type = 'video'
         else:
-            file_type = 'image' if path.split('.')[-1].lower() in IMG_FORMATS else 'video'
+            file_type = 'image' if path.split(
+                '.')[-1].lower() in IMG_FORMATS else 'video'
         return file_type
 
     def __iter__(self):
