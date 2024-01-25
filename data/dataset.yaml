@@ -6,5 +6,5 @@ test: data\dental_dataset\extended\images\test # test images (optional)
 # whether it is coco dataset, only coco dataset should be set to True.
 is_coco: False
 # Classes
-nc: 5 # number of classes
+nc: 4 # number of classes
 names: ["Stage 2 (Inner Enamel)", "Stage 3 (Outer Dentin)", "Stage 4 (Middle Dentin)", "Stage 5 (Inner Dentin)"] # class names
