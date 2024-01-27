@@ -41,7 +41,7 @@ This branch adds image processing to each image to create an enhanced image with
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
 | all   | 122    | 117    | 0.257   | 0.23    | 0.233    | 0.177  | 0.0612     |
 
-## semi-enhanced branch
+## semi-enhanced-dataset branch
 
 This branch adds image enhancement but no extra edge detect layer
 
