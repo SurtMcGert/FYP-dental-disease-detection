@@ -159,11 +159,32 @@ class Inferer:
                     vid_writer.write(img_src)
 
     @staticmethod
+    def preProcess_image(img):
+        """function to enhance image"""
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # create a CLAHE object.
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
+        # apply CLAHE to the image
+        claheImg = clahe.apply(img)
+
+        # de-noise and blur CLAHE image
+        claheImg = cv2.fastNlMeansDenoising(claheImg, None, 30, 5, 50)
+
+
+        # combine the images into a 2 channel image
+        claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+        # Convert
+        claheImg = claheImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        
+        return claheImg
+
+    @staticmethod
     def process_image(img_src, img_size, stride, half):
         '''Process image before image inference.'''
         image = letterbox(img_src, img_size, stride=stride)[0]
         # Convert
-        image = image.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        image = Inferer.preProcess_image(image)
         image = torch.from_numpy(np.ascontiguousarray(image))
         image = image.half() if half else image.float()  # uint8 to fp16/32
         image /= 255  # 0 - 255 to 0.0 - 1.0
