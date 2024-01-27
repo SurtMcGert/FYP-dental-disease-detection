@@ -34,3 +34,15 @@ This branch contains the same implementation as main, except the dataset has bee
 This branch adds image processing to each image to create an enhanced image with an extra edge detection layer
 
 ### 500 epochs
+
+30 hours
+
+| Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
+| ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
+| all   | 122    | 117    | 0.257   | 0.23    | 0.233    | 0.177  | 0.0612     |
+
+## semi-enhanced branch
+
+This branch adds image enhancement but no extra edge detect layer
+
+### 500 epochs
