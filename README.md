@@ -16,3 +16,11 @@ This branch contains the implementation of YOLOv6 on first VOLOv6s and then YOLO
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
 | all   | 122    | 117    | 0.31    | 0.261   | 0.278    | 0.216  | 0.0939     |
+
+### 500 epochs YOLOv6s6
+
+9.6 hours
+
+| Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
+| ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
+| all   | 122    | 117    | 0.695   | 0.22    | 0.329    | 0.242  | 0.139      |
