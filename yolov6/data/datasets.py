@@ -782,7 +782,7 @@ class LoadData:
     def preProcess_image(self, img):
         """function to enhance image"""
         claheImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # create a CLAHE object.
+        # create the CLAHE objects.
         clahe = cv2.createCLAHE(clipLimit=100.0, tileGridSize=(1, 1))
         clahe2 = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(100, 100))
 

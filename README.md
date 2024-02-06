@@ -24,3 +24,11 @@ This branch contains the implementation of YOLOv6 on first VOLOv6s and then YOLO
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
 | all   | 122    | 117    | 0.695   | 0.22    | 0.329    | 0.242  | 0.139      |
+
+### 500 epochs YOLOv6s6 SGD Optimized
+
+10.3 hours to get hyperparams, 9.6 hours to train
+
+| Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
+| ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
+| all   | 122    | 117    | 0.569   | 0.235   | 0.332    | 0.239  | 0.147      |
