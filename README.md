@@ -29,6 +29,21 @@ This branch contains the implementation of YOLOv6 on first VOLOv6s and then YOLO
 
 10.3 hours to get hyperparams, 9.6 hours to train
 
+best mAP: 0.013285234570503235
+the best hyperparameters: tensor([1.0000e-01, 1.0000e-03, 9.0000e-01, 1.0000e-04])
+
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
 | all   | 122    | 117    | 0.569   | 0.235   | 0.332    | 0.239  | 0.147      |
+
+### 500 epochs YOLOv6s6 Adam Optimized
+
+12 hours to get hyperparams, 29.35 hours to train
+
+best mAP: 0.03678618744015694
+the best hyperparameters: tensor([0.0304, 0.0676, 0.8504, 0.0010])
+didnt work so changed
+
+| Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
+| ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
+| all   | 122    | 117    | 0.336   | 0.247   | 0.278    | 0.2    | 0.11       |

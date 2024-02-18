@@ -1,7 +1,7 @@
 # YOLOv6n model
 model = dict(
     type='YOLOv6s6',
-    pretrained=None,
+    pretrained='runs\\train\\light_train\\weights\\best_ckpt.pt',
     depth_multiple=0.33,
     width_multiple=0.50,
     backbone=dict(
@@ -30,16 +30,17 @@ model = dict(
 )
 
 solver = dict(
-    optim='Adam',
+    optim='NAdam',
     lr_scheduler='Cosine',
-    lr0=0.06645622104406357,
-    lrf=0.08799513429403305,
-    momentum=0.6896483898162842,
-    weight_decay=0.007557878270745277,
+    lr0=0.004999999888241291,
+    lrf=0.10000000149011612,
+    momentum=0.6499999761581421,
+    weight_decay=9.999999747378752e-05,
     warmup_epochs=3.0,
     warmup_momentum=0.8,
     warmup_bias_lr=0.1
 )
+
 
 data_aug = dict(
     hsv_h=0.015,

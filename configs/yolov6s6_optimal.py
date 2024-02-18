@@ -30,11 +30,11 @@ model = dict(
 )
 
 solver = dict(
-    optim='SGD',
+    optim='NAdam',
     lr_scheduler='Cosine',
-    lr0=0.10000000149011612,
-    lrf=0.0010000000474974513,
-    momentum=0.8999999761581421,
+    lr0=0.004999999888241291,
+    lrf=0.10000000149011612,
+    momentum=0.6499999761581421,
     weight_decay=9.999999747378752e-05,
     warmup_epochs=3.0,
     warmup_momentum=0.8,
