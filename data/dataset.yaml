@@ -7,4 +7,4 @@ test: data\dental_dataset\images\test # test images (optional)
 is_coco: False
 # Classes
 nc: 4 # number of classes
-names: ["Stage 2 (Inner Enamel)", "Stage 3 (Outer Dentin)", "Stage 4 (Middle Dentin)", "Stage 5 (Inner Dentin)"] # class names
+names: ["Caries", "Deep Caries", "Periapical Lesion", "Impacted Tooth"] # class names
