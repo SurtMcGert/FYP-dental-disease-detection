@@ -13,7 +13,8 @@ def load_state_dict(weights, model, map_location=None):
     ckpt = torch.load(weights, map_location=map_location)
     state_dict = ckpt['model'].float().state_dict()
     model_state_dict = model.state_dict()
-    state_dict = {k: v for k, v in state_dict.items() if k in model_state_dict and v.shape == model_state_dict[k].shape}
+    state_dict = {k: v for k, v in state_dict.items(
+    ) if k in model_state_dict and v.shape == model_state_dict[k].shape}
     model.load_state_dict(state_dict, strict=False)
     del ckpt, state_dict, model_state_dict
     return model
@@ -23,6 +24,7 @@ def load_checkpoint(weights, map_location=None, inplace=True, fuse=True):
     """Load model from checkpoint file."""
     LOGGER.info("Loading checkpoint from {}".format(weights))
     ckpt = torch.load(weights, map_location=map_location)  # load
+    test = ckpt['model'].float()
     model = ckpt['ema' if ckpt.get('ema') else 'model'].float()
     if fuse:
         LOGGER.info("\nFusing model...")

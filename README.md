@@ -2,8 +2,8 @@
 
 ## Dataset
 
-The dataset consists of 719 radiographs with 5 stages of dental caries
-Healthy, Stage 2 (Inner Enamel), Stage 3 (Outer Dentin), Stage 4 (Middle Dentin) and Stage 5 (Inner Dentin)
+The dataset consists of 705 radiographs with 5 stages of dental caries
+Healthy, Caries, Deep Caries, Periapical Lesion, Impacted Tooth
 
 ## semi-enhanced Branch
 
@@ -11,11 +11,11 @@ This branch contains the implementation of YOLOv6 on first VOLOv6s and then YOLO
 
 ### 500 epochs YOLOv6s
 
-9.2 hours
+10.8 hours
 
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
-| all   | 122    | 117    | 0.31    | 0.261   | 0.278    | 0.216  | 0.0939     |
+| all   | 141    | 732    | 0.925   | 0.771   | 0.839    | 0.867  | 0.629      |
 
 ### 500 epochs YOLOv6s6
 

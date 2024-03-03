@@ -281,9 +281,9 @@ class TrainValDataset(Dataset):
 
         # apply CLAHE to the image
         claheImg = cv2.GaussianBlur(claheImg, (5, 5), 0, 0)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=2)
+        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
         claheImg = clahe.apply(claheImg)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=1.5)
+        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
         claheImg = clahe2.apply(claheImg)
 
         # de-noise
@@ -788,9 +788,9 @@ class LoadData:
 
         # apply CLAHE to the image
         claheImg = cv2.GaussianBlur(claheImg, (5, 5), 0, 0)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=2)
+        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
         claheImg = clahe.apply(claheImg)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=1.5)
+        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
         claheImg = clahe2.apply(claheImg)
 
         # de-noise
