@@ -2,8 +2,8 @@
 
 ## Dataset
 
-The dataset consists of 705 radiographs with 5 classes
-Healthy, Caries, Deep Caries, Periapical Lesion, Impacted tooth
+The dataset consists of 705 radiographs with 5 stages of dental caries provided by DENTEX
+Healthy, Caries, Deep Caries, Periapical Lesion, Impacted Tooth
 
 ## Increased-Dataset Branch
 
