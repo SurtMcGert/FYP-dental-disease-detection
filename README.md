@@ -1,8 +1,8 @@
-# The Detection of Dental Caries in Pediatric Bitewing Radiographs Implemented using YOLOv6
+# The Detection of Dental Caries in Panoramic Radiographs Implemented using YOLOv6
 
 ## Dataset
 
-The dataset consists of 705 radiographs with 5 stages of dental caries
+The dataset consists of 705 radiographs with 5 stages of dental caries provided by DENTEX
 Healthy, Caries, Deep Caries, Periapical Lesion, Impacted Tooth
 
 ## enhanced-dataset Branch
