@@ -1,8 +1,8 @@
-# The Detection of Dental Caries in Pediatric Bitewing Radiographs Implemented using YOLOv6
+# The Detection of Dental Caries in Panoramic Radiographs Implemented using YOLOv6
 
 ## Dataset
 
-The dataset consists of 705 radiographs with 5 stages of dental caries
+The dataset consists of 705 radiographs with 5 stages of dental caries provided by DENTEX
 Healthy, Caries, Deep Caries, Periapical Lesion, Impacted Tooth
 
 ## semi-enhanced Branch
@@ -23,27 +23,26 @@ This branch contains the implementation of YOLOv6 on first VOLOv6s and then YOLO
 
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
-| all   | 122    | 117    | 0.695   | 0.22    | 0.329    | 0.242  | 0.139      |
+| all   | 141    | 732    | 0.914   | 0.824   | 0.866    | 0.873  | 0.635      |
 
 ### 500 epochs YOLOv6s6 SGD Optimized
 
-10.3 hours to get hyperparams, 9.6 hours to train
+0.13 hours to make initial weights 11.62 hours to get hyperparams, 12.10 hours to train
 
-best mAP: 0.013285234570503235
-the best hyperparameters: tensor([1.0000e-01, 1.0000e-03, 9.0000e-01, 1.0000e-04])
+best mAP: 0.11704626679420471
+the best hyperparameters: tensor([1.0000e-01, 1.0000e-03, 8.8008e-01, 1.0000e-04])
 
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
-| all   | 122    | 117    | 0.569   | 0.235   | 0.332    | 0.239  | 0.147      |
+| all   | 141    | 732    | 0.924   | 0.805   | 0.859    | 0.857  | 0.648      |
 
 ### 500 epochs YOLOv6s6 Adam Optimized
 
-12 hours to get hyperparams, 29.35 hours to train
+0.13 hours to make initial weights 12.00 hours to get hyperparams, 15.14 hours to train
 
-best mAP: 0.03678618744015694
-the best hyperparameters: tensor([0.0304, 0.0676, 0.8504, 0.0010])
-didnt work so changed
+best mAP: 0.3040043115615845
+the best hyperparameters: tensor([4.7758e-02, 1.0000e-03, 9.0000e-01, 1.0000e-04])
 
 | Class | Images | Labels | P@.5iou | R@.5iou | F1@.5iou | mAP@.5 | mAP@.5:.95 |
 | ----- | ------ | ------ | ------- | ------- | -------- | ------ | ---------- |
-| all   | 122    | 117    | 0.336   | 0.247   | 0.278    | 0.2    | 0.11       |
+| all   | 141    | 732    | 0.774   | 0.698   | 0.732    | 0.755  | 0.5        |
