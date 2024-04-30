@@ -7,7 +7,7 @@ Healthy, Caries, Deep Caries, Periapical Lesion, Impacted Tooth
 
 ## semi-enhanced Branch
 
-This branch contains the implementation of YOLOv6 on first VOLOv6s and then YOLOv6s6 with processing to enhance the images using CLAHE
+This branch contains the implementation of Self Attention on the YOLOv6 Model
 
 ### 500 epochs YOLOv6s
 

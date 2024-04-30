@@ -1,7 +1,8 @@
 from pickle import FALSE
 from torch import nn
+import torch
 from yolov6.layers.common import BottleRep, RepVGGBlock, RepBlock, BepC3, SimSPPF, SPPF, SimCSPSPPF, CSPSPPF, ConvBNSiLU, \
-                                MBLABlock, ConvBNHS, Lite_EffiBlockS2, Lite_EffiBlockS1
+    MBLABlock, ConvBNHS, Lite_EffiBlockS2, Lite_EffiBlockS1
 
 
 class EfficientRep(nn.Module):
@@ -228,6 +229,21 @@ class EfficientRep6(nn.Module):
             )
         )
 
+        # self attention layers
+        self.conv_q = nn.Conv2d(
+            channels_list[5], channels_list[5], kernel_size=3, padding=1)
+        self.conv_k = nn.Conv2d(
+            channels_list[5], channels_list[5], kernel_size=3, padding=1)
+        self.conv_v = nn.Conv2d(
+            channels_list[5], channels_list[5], kernel_size=3, padding=1)
+
+    def self_attention(self, x):
+        # q = self.conv_q(x)
+        # k = self.conv_k(x)
+        # v = self.conv_v(x)
+        # attention_scores = torch.einsum("bnqd,bnkd->bnqk", q, k)
+        print(x.cpu().size())
+
     def forward(self, x):
 
         outputs = []
@@ -242,7 +258,9 @@ class EfficientRep6(nn.Module):
         x = self.ERBlock_5(x)
         outputs.append(x)
         x = self.ERBlock_6(x)
+        attention = self.self_attention(x)
         outputs.append(x)
+        print(x.size())
 
         return tuple(outputs)
 
@@ -400,7 +418,7 @@ class CSPBepBackbone_P6(nn.Module):
             stage_block = MBLABlock
         else:
             raise NotImplementedError
-        
+
         self.fuse_P2 = fuse_P2
 
         self.stem = block(
@@ -515,20 +533,21 @@ class CSPBepBackbone_P6(nn.Module):
 
         return tuple(outputs)
 
+
 class Lite_EffiBackbone(nn.Module):
     def __init__(self,
                  in_channels,
                  mid_channels,
                  out_channels,
                  num_repeat=[1, 3, 7, 3]
-    ):
+                 ):
         super().__init__()
-        out_channels[0]=24
+        out_channels[0] = 24
         self.conv_0 = ConvBNHS(in_channels=in_channels,
-                             out_channels=out_channels[0],
-                             kernel_size=3,
-                             stride=2,
-                             padding=1)
+                               out_channels=out_channels[0],
+                               kernel_size=3,
+                               stride=2,
+                               padding=1)
 
         self.lite_effiblock_1 = self.build_block(num_repeat[0],
                                                  out_channels[0],
@@ -568,15 +587,15 @@ class Lite_EffiBackbone(nn.Module):
         for i in range(num_repeat):
             if i == 0:
                 block = Lite_EffiBlockS2(
-                            in_channels=in_channels,
-                            mid_channels=mid_channels,
-                            out_channels=out_channels,
-                            stride=2)
+                    in_channels=in_channels,
+                    mid_channels=mid_channels,
+                    out_channels=out_channels,
+                    stride=2)
             else:
                 block = Lite_EffiBlockS1(
-                            in_channels=out_channels,
-                            mid_channels=mid_channels,
-                            out_channels=out_channels,
-                            stride=1)
+                    in_channels=out_channels,
+                    mid_channels=mid_channels,
+                    out_channels=out_channels,
+                    stride=1)
             block_list.add_module(str(i), block)
         return block_list
