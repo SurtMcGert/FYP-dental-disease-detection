@@ -133,13 +133,16 @@ class EfficientRep6(nn.Module):
         num_repeats=None,
         block=RepVGGBlock,
         fuse_P2=False,
-        cspsppf=False
+        cspsppf=False,
+        generate_heat_maps=False,
     ):
         super().__init__()
 
         assert channels_list is not None
         assert num_repeats is not None
         self.fuse_P2 = fuse_P2
+
+        self.generate_heat_maps = generate_heat_maps
 
         self.stem = block(
             in_channels=in_channels,
@@ -223,16 +226,28 @@ class EfficientRep6(nn.Module):
                 n=num_repeats[5],
                 block=block,
             ),
+            # channel_merge_layer(
+            #     in_channels=channels_list[5],
+            #     out_channels=channels_list[5],
+            #     kernel_size=5
+            # )
+        )
+
+        self.num_of_attention_heads = 4
+        # self.attention_layer = MultiHeadedSelfAttention(
+        #     channels_list[5], self.num_of_attention_heads)
+
+        self.attention_block = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[5],
+                num_heads=self.num_of_attention_heads
+            ),
             channel_merge_layer(
                 in_channels=channels_list[5],
                 out_channels=channels_list[5],
                 kernel_size=5
             )
         )
-
-        self.num_of_attention_heads = 4
-        self.attention_layer = MultiHeadedSelfAttention(
-            channels_list[5], int(channels_list[5]/self.num_of_attention_heads), int(channels_list[5]/self.num_of_attention_heads), int(channels_list[5]/self.num_of_attention_heads), self.num_of_attention_heads)
 
     def forward(self, x):
 
@@ -248,93 +263,80 @@ class EfficientRep6(nn.Module):
         x = self.ERBlock_5(x)
         outputs.append(x)
         x = self.ERBlock_6(x)
-        x = self.attention_layer(x)
+        x = self.attention_block(x)
         outputs.append(x)
 
-        return tuple(outputs)
+        attention_weights = None
+
+        if (self.training):
+            return tuple(outputs)
+        else:
+            return tuple(outputs), attention_weights
 
 
 class MultiHeadedSelfAttention(nn.Module):
-    def __init__(self, input_dim, q_dim, k_dim, v_dim, num_heads):
-        assert input_dim % num_heads == 0, f"input_dim ({input_dim}) must be divisible by num_heads ({num_heads})"
+    """ Self attention Layer"""
+
+    def __init__(self, in_dim, num_heads):
+        assert in_dim % num_heads == 0, f"input_dim ({in_dim}) must be divisible by num_heads ({num_heads})"
         assert isinstance(
-            input_dim, int), f"input_dim ({input_dim}) must be an integer"
-        assert isinstance(q_dim, int), f"q_dim ({q_dim}) must be an integer"
-        assert isinstance(k_dim, int), f"k_dim ({k_dim}) must be an integer"
-        assert isinstance(v_dim, int), f"v_dim ({v_dim}) must be an integer"
+            in_dim, int), f"input_dim ({in_dim}) must be an integer"
         super(MultiHeadedSelfAttention, self).__init__()
-        self.input_dim = input_dim  # List of input/output channel dimensions
-        self.q_dim = q_dim  # Dimensionality per head for queries
-        self.k_dim = k_dim  # Dimensionality per head for keys
-        self.v_dim = v_dim  # Dimensionality per head for values
-        self.num_of_heads = num_heads  # Number of attention heads
+        self.chanel_in = in_dim
+        self.num_heads = num_heads
+        self.k_dim = in_dim / num_heads
 
-        # print(f"input_dim: {self.input_dim}")
-        # print(f"q_dim: {self.q_dim}")
-        # print(f"k_dim: {self.k_dim}")
-        # print(f"v_dim: {self.v_dim}")
-        # print(f"num_of_heads: {self.num_of_heads}")
-
-        # Self-attention layers (Conv2d with kernel_size=1)
         self.conv_q = nn.Conv2d(
-            self.input_dim, self.q_dim * self.num_of_heads, kernel_size=1)
+            in_channels=in_dim, out_channels=in_dim // self.num_heads, kernel_size=1)
         self.conv_k = nn.Conv2d(
-            self.input_dim, self.k_dim * self.num_of_heads, kernel_size=1)
+            in_channels=in_dim, out_channels=in_dim // self.num_heads, kernel_size=1)
         self.conv_v = nn.Conv2d(
-            self.input_dim, self.v_dim * self.num_of_heads, kernel_size=1)
+            in_channels=in_dim, out_channels=in_dim, kernel_size=1)
+        self.gamma = nn.Parameter(torch.zeros(1))
 
-        # Weight for final linear projection (output)
-        # self.fc = nn.Linear(self.num_heads * self.v_dim,
-        #                     self.channels_list[6], bias=False)
+        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x):
-        batch_size, num_channels, height, width = x.size()
+        batch_size, C, width, height = x.size()
 
-        # Project using Conv2d layers
         q = self.conv_q(x)
         k = self.conv_k(x)
         v = self.conv_v(x)
 
-        # print(f"q: {q.size()}")
-        # print(f"k: {k.size()}")
-        # print(f"v: {v.size()}")
+        q = q.view(batch_size, -1, width * height)
+        k = k.view(batch_size, -1, width * height)
+        v = v.view(batch_size, -1, width * height)
 
-        # Reshape for multi-headed attention
-        q_heads = q.view(batch_size, self.num_of_heads,
-                         self.q_dim, height, width)
-        k_heads = k.view(batch_size, self.num_of_heads,
-                         self.k_dim, height, width)
-        v_heads = v.view(batch_size, self.num_of_heads,
-                         self.v_dim, height, width)
+        # print(f"proj_q: {q.size()}")
+        # print(f"proj_k: {k.size()}")
+        # print(f"proj_v: {v.size()}")
+
+        q_heads = q.view(batch_size, self.num_heads,
+                         -1, height * width)
+        k_heads = k.view(batch_size, self.num_heads,
+                         -1, height * width)
+        v_heads = v.view(batch_size, self.num_heads,
+                         -1, height * width)
 
         # print(f"q_heads: {q_heads.size()}")
         # print(f"k_heads: {k_heads.size()}")
         # print(f"v_heads: {v_heads.size()}")
 
-        # calculate the attention scores
         attention_scores = torch.matmul(
-            q_heads, k_heads.transpose(-2, -1)) / math.sqrt(self.k_dim)
+            q_heads.transpose(-2, -1), k_heads) / math.sqrt(self.k_dim)
 
         # print(f"attention_scores: {attention_scores.size()}")
 
-        # calculate the attention weights
-        attention_weights = torch.nn.functional.softmax(
-            attention_scores, dim=-1)
+        attention_weights = self.softmax(attention_scores)
 
         # print(f"attention_weights: {attention_weights.size()}")
 
-        # calculate the new contexts
-        new_contexts = torch.matmul(attention_weights, v_heads)
+        out = torch.matmul(v_heads, attention_weights.transpose(-2, -1))
+        # print(f"out: {out.size()}")
+        out = out.view(batch_size, C, width, height)
 
-        # print(f"new_contexts: {new_contexts.size()}")
-
-        # Concatenate heads and apply final linear projection
-        output = new_contexts.view(
-            batch_size, -1, height, width)  # Reshape before concatenation
-
-        # print(f"output: {output.size()}")
-
-        return output
+        out = (self.gamma * out) + x
+        return out
 
 
 class CSPBepBackbone(nn.Module):
@@ -348,7 +350,7 @@ class CSPBepBackbone(nn.Module):
         channels_list=None,
         num_repeats=None,
         block=RepVGGBlock,
-        csp_e=float(1)/2,
+        csp_e=float(1) / 2,
         fuse_P2=False,
         cspsppf=False,
         stage_block_type="BepC3"
@@ -475,7 +477,7 @@ class CSPBepBackbone_P6(nn.Module):
         channels_list=None,
         num_repeats=None,
         block=RepVGGBlock,
-        csp_e=float(1)/2,
+        csp_e=float(1) / 2,
         fuse_P2=False,
         cspsppf=False,
         stage_block_type="BepC3"

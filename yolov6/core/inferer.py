@@ -7,6 +7,8 @@ import math
 import torch
 import numpy as np
 import os.path as osp
+import matplotlib.pyplot as plt
+import os  # Import os for folder creation
 
 from tqdm import tqdm
 from pathlib import Path
@@ -22,7 +24,7 @@ from yolov6.utils.torch_utils import get_model_info
 
 
 class Inferer:
-    def __init__(self, source, webcam, webcam_addr, weights, device, yaml, img_size, half):
+    def __init__(self, source, webcam, webcam_addr, weights, device, yaml, img_size, half, generate_heat_maps):
 
         self.__dict__.update(locals())
 
@@ -37,6 +39,7 @@ class Inferer:
         self.img_size = self.check_img_size(
             self.img_size, s=self.stride)  # check image size
         self.half = half
+        self.generate_heat_maps = generate_heat_maps
 
         # Switch model to deploy status
         self.model_switch(self.model.model, self.img_size)
@@ -81,10 +84,29 @@ class Inferer:
                 img = img[None]
                 # expand for batch dim
             t1 = time.time()
-            pred_results = self.model(img)
+            pred_results, attention_weights = self.model(img)
             det = non_max_suppression(
                 pred_results, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
             t2 = time.time()
+
+            # generate self attention heat maps
+            if self.generate_heat_maps:
+                average_heatmaps = torch.mean(attention_weights, dim=1)
+                # Reshape for visualization
+                average_heatmaps = average_heatmaps.squeeze(1)
+                heat_maps = average_heatmaps[0, 0:4, :, :]
+                heatmap_data = heat_maps.cpu().detach().numpy()
+                heatmap_data = np.clip(heatmap_data, 0, 1)
+                for index, map_data in enumerate(heatmap_data):
+                    plt.figure()
+                    plt.imshow(map_data, cmap='viridis')
+                    plt.colorbar()
+                    folder_path = osp.join(save_dir, "heat-maps")
+                    os.makedirs(folder_path, exist_ok=True)
+                    filename = f"heatmap_{str(index)}.png"
+                    filepath = os.path.join(folder_path, filename)
+                    plt.savefig(filepath)
+                    plt.close()
 
             if self.webcam:
                 save_path = osp.join(save_dir, self.webcam_addr)
@@ -92,7 +114,8 @@ class Inferer:
             else:
                 # Create output files in nested dirs that mirrors the structure of the images' dirs
                 rel_path = osp.relpath(osp.dirname(
-                    img_path), osp.dirname(self.source))
+                    img_path),
+                    osp.dirname(self.source))
                 save_path = osp.join(save_dir, rel_path,
                                      osp.basename(img_path))  # im.jpg
                 txt_path = osp.join(save_dir, rel_path, 'labels', osp.splitext(
@@ -238,7 +261,7 @@ class Inferer:
         if new_size != img_size:
             print(
                 f'WARNING: --img-size {img_size} must be multiple of max stride {s}, updating to {new_size}')
-        return new_size if isinstance(img_size, list) else [new_size]*2
+        return new_size if isinstance(img_size, list) else [new_size] * 2
 
     def make_divisible(self, x, divisor):
         # Upward revision the value x to make it evenly divisible by the divisor.

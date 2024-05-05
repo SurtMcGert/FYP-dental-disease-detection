@@ -35,13 +35,19 @@ class Model(nn.Module):
 
     def forward(self, x):
         export_mode = torch.onnx.is_in_onnx_export() or self.export
-        x = self.backbone(x)
+        if (self.training):
+            x = self.backbone(x)
+        else:
+            x, attention_weights = self.backbone(x)
         x = self.neck(x)
         if not export_mode:
             featmaps = []
             featmaps.extend(x)
         x = self.detect(x)
-        return x if export_mode is True else [x, featmaps]
+        if (self.training):
+            return x if export_mode is True else [x, featmaps]
+        else:
+            return x if export_mode is True else [x, featmaps, attention_weights]
 
     def _apply(self, fn):
         self = super()._apply(fn)

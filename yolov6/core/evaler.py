@@ -128,7 +128,7 @@ class Evaler:
 
             # Inference
             t2 = time_sync()
-            outputs, _ = model(imgs)
+            outputs, _, attention_weights = model(imgs)
             self.speed_result[2] += time_sync() - t2  # inference time
 
             # post-process
@@ -520,7 +520,7 @@ class Evaler:
                     continue
                 path, shape = Path(paths[i]), shapes[i][0]
                 gain = shapes[i][1][0][0]
-                pad = torch.tensor(shapes[i][1][1]*2).to(self.device)
+                pad = torch.tensor(shapes[i][1][1] * 2).to(self.device)
                 detbox = detbox[:n, :]
                 detbox -= pad
                 detbox /= gain
