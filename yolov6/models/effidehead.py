@@ -13,6 +13,7 @@ class Detect(nn.Module):
     With hardware-aware degisn, the decoupled head is optimized with
     hybridchannels methods.
     '''
+
     def __init__(self, num_classes=80, num_layers=3, inplace=True, head_layers=None, use_dfl=True, reg_max=16):  # detection layer
         super().__init__()
         assert head_layers is not None
@@ -22,7 +23,8 @@ class Detect(nn.Module):
         self.grid = [torch.zeros(1)] * num_layers
         self.prior_prob = 1e-2
         self.inplace = inplace
-        stride = [8, 16, 32] if num_layers == 3 else [8, 16, 32, 64] # strides computed during build
+        stride = [8, 16, 32] if num_layers == 3 else [
+            8, 16, 32, 64]  # strides computed during build
         self.stride = torch.tensor(stride)
         self.use_dfl = use_dfl
         self.reg_max = reg_max
@@ -39,12 +41,12 @@ class Detect(nn.Module):
 
         # Efficient decoupled head layers
         for i in range(num_layers):
-            idx = i*5
+            idx = i * 5
             self.stems.append(head_layers[idx])
-            self.cls_convs.append(head_layers[idx+1])
-            self.reg_convs.append(head_layers[idx+2])
-            self.cls_preds.append(head_layers[idx+3])
-            self.reg_preds.append(head_layers[idx+4])
+            self.cls_convs.append(head_layers[idx + 1])
+            self.reg_convs.append(head_layers[idx + 2])
+            self.cls_preds.append(head_layers[idx + 3])
+            self.reg_preds.append(head_layers[idx + 4])
 
     def initialize_biases(self):
 
@@ -64,9 +66,10 @@ class Detect(nn.Module):
             w.data.fill_(0.)
             conv.weight = torch.nn.Parameter(w, requires_grad=True)
 
-        self.proj = nn.Parameter(torch.linspace(0, self.reg_max, self.reg_max + 1), requires_grad=False)
+        self.proj = nn.Parameter(torch.linspace(
+            0, self.reg_max, self.reg_max + 1), requires_grad=False)
         self.proj_conv.weight = nn.Parameter(self.proj.view([1, self.reg_max + 1, 1, 1]).clone().detach(),
-                                                   requires_grad=False)
+                                             requires_grad=False)
 
     def forward(self, x):
         if self.training:
@@ -84,7 +87,8 @@ class Detect(nn.Module):
 
                 cls_output = torch.sigmoid(cls_output)
                 cls_score_list.append(cls_output.flatten(2).permute((0, 2, 1)))
-                reg_distri_list.append(reg_output.flatten(2).permute((0, 2, 1)))
+                reg_distri_list.append(
+                    reg_output.flatten(2).permute((0, 2, 1)))
 
             cls_score_list = torch.cat(cls_score_list, axis=1)
             reg_distri_list = torch.cat(reg_distri_list, axis=1)
@@ -106,7 +110,8 @@ class Detect(nn.Module):
                 reg_output = self.reg_preds[i](reg_feat)
 
                 if self.use_dfl:
-                    reg_output = reg_output.reshape([-1, 4, self.reg_max + 1, l]).permute(0, 2, 1, 3)
+                    reg_output = reg_output.reshape(
+                        [-1, 4, self.reg_max + 1, l]).permute(0, 2, 1, 3)
                     reg_output = self.proj_conv(F.softmax(reg_output, dim=1))
 
                 cls_output = torch.sigmoid(cls_output)
@@ -121,19 +126,21 @@ class Detect(nn.Module):
             if self.export:
                 return tuple(torch.cat([cls, reg], 1) for cls, reg in zip(cls_score_list, reg_dist_list))
 
-            cls_score_list = torch.cat(cls_score_list, axis=-1).permute(0, 2, 1)
+            cls_score_list = torch.cat(
+                cls_score_list, axis=-1).permute(0, 2, 1)
             reg_dist_list = torch.cat(reg_dist_list, axis=-1).permute(0, 2, 1)
-
 
             anchor_points, stride_tensor = generate_anchors(
                 x, self.stride, self.grid_cell_size, self.grid_cell_offset, device=x[0].device, is_eval=True, mode='af')
 
-            pred_bboxes = dist2bbox(reg_dist_list, anchor_points, box_format='xywh')
+            pred_bboxes = dist2bbox(
+                reg_dist_list, anchor_points, box_format='xywh')
             pred_bboxes *= stride_tensor
             return torch.cat(
                 [
                     pred_bboxes,
-                    torch.ones((b, pred_bboxes.shape[1], 1), device=pred_bboxes.device, dtype=pred_bboxes.dtype),
+                    torch.ones(
+                        (b, pred_bboxes.shape[1], 1), device=pred_bboxes.device, dtype=pred_bboxes.dtype),
                     cls_score_list
                 ],
                 axis=-1)
@@ -247,47 +254,47 @@ def build_effidehead_layer(channels_list, num_anchors, num_classes, reg_max=16, 
 
     if num_layers == 4:
         head_layers.add_module('stem3',
-            # stem3
-            ConvBNSiLU(
-                in_channels=channels_list[chx[3]],
-                out_channels=channels_list[chx[3]],
-                kernel_size=1,
-                stride=1
-            )
-        )
+                               # stem3
+                               ConvBNSiLU(
+                                   in_channels=channels_list[chx[3]],
+                                   out_channels=channels_list[chx[3]],
+                                   kernel_size=1,
+                                   stride=1
+                               )
+                               )
         head_layers.add_module('cls_conv3',
-            # cls_conv3
-            ConvBNSiLU(
-                in_channels=channels_list[chx[3]],
-                out_channels=channels_list[chx[3]],
-                kernel_size=3,
-                stride=1
-            )
-        )
+                               # cls_conv3
+                               ConvBNSiLU(
+                                   in_channels=channels_list[chx[3]],
+                                   out_channels=channels_list[chx[3]],
+                                   kernel_size=3,
+                                   stride=1
+                               )
+                               )
         head_layers.add_module('reg_conv3',
-            # reg_conv3
-            ConvBNSiLU(
-                in_channels=channels_list[chx[3]],
-                out_channels=channels_list[chx[3]],
-                kernel_size=3,
-                stride=1
-            )
-        )
+                               # reg_conv3
+                               ConvBNSiLU(
+                                   in_channels=channels_list[chx[3]],
+                                   out_channels=channels_list[chx[3]],
+                                   kernel_size=3,
+                                   stride=1
+                               )
+                               )
         head_layers.add_module('cls_pred3',
-            # cls_pred3
-            nn.Conv2d(
-                in_channels=channels_list[chx[3]],
-                out_channels=num_classes * num_anchors,
-                kernel_size=1
-            )
-         )
+                               # cls_pred3
+                               nn.Conv2d(
+                                   in_channels=channels_list[chx[3]],
+                                   out_channels=num_classes * num_anchors,
+                                   kernel_size=1
+                               )
+                               )
         head_layers.add_module('reg_pred3',
-            # reg_pred3
-            nn.Conv2d(
-                in_channels=channels_list[chx[3]],
-                out_channels=4 * (reg_max + num_anchors),
-                kernel_size=1
-            )
-        )
+                               # reg_pred3
+                               nn.Conv2d(
+                                   in_channels=channels_list[chx[3]],
+                                   out_channels=4 * (reg_max + num_anchors),
+                                   kernel_size=1
+                               )
+                               )
 
     return head_layers

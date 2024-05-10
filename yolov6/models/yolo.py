@@ -19,7 +19,7 @@ class Model(nn.Module):
     '''
 
     # model, input channels, number of classes
-    def __init__(self, config, channels=3, num_classes=None, fuse_ab=False, distill_ns=False):
+    def __init__(self, config, channels=6, num_classes=None, fuse_ab=False, distill_ns=False):
         super().__init__()
         # Build network
         num_layers = config.model.head.num_layers
@@ -152,6 +152,6 @@ def build_network(config, channels, num_classes, num_layers, fuse_ab=False, dist
 
 
 def build_model(cfg, num_classes, device, fuse_ab=False, distill_ns=False):
-    model = Model(cfg, channels=3, num_classes=num_classes,
+    model = Model(cfg, channels=6, num_classes=num_classes,
                   fuse_ab=fuse_ab, distill_ns=distill_ns).to(device)
     return model

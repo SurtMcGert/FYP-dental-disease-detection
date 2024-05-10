@@ -265,38 +265,66 @@ class TrainValDataset(Dataset):
             labels_out[:, 1:] = torch.from_numpy(labels)
 
         # Convert
-        img = img.transpose(
-            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-        # img = self.preProcess_image(img)
+        # img = img.transpose(
+        #     (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+
+        img = self.preProcess_image(img)
         img = np.ascontiguousarray(img)
 
         return torch.from_numpy(img), labels_out, self.img_paths[index], shapes
 
     def preProcess_image(self, img):
-        """function to enhance image"""
-        claheImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        """function to enhance image and add extra edge detect layer"""
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # create a CLAHE object.
-        clahe = cv2.createCLAHE(clipLimit=100.0, tileGridSize=(1, 1))
-        clahe2 = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(100, 100))
-
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
         # apply CLAHE to the image
-        claheImg = cv2.GaussianBlur(claheImg, (5, 5), 0, 0)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
-        claheImg = clahe.apply(claheImg)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
-        claheImg = clahe2.apply(claheImg)
+        claheImg = clahe.apply(img)
 
-        # de-noise
-        # claheImg = cv2.fastNlMeansDenoising(claheImg, None, 30, 5, 50)
+        # de-noise and blur CLAHE image
+        deNoise = cv2.fastNlMeansDenoising(claheImg, None, 20, 7, 30)
+        blur = cv2.GaussianBlur(deNoise, (5, 5), 5)
+
+        # apply canny edge detect
+        edgeDetectImg = cv2.Canny(blur, 45, 55)
 
         # combine the images into a 2 channel image
-        # claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
-        # Convert
-        # claheImg = claheImg.transpose(
-        #     (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
         claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+        edgeDetectImg = cv2.cvtColor(edgeDetectImg, cv2.COLOR_GRAY2BGR)
+        # Convert
+        claheImg = claheImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        edgeDetectImg = edgeDetectImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        channels = [claheImg, edgeDetectImg]
+        newImg = np.concatenate(channels, axis=0)
+        return newImg
 
-        return claheImg
+    # def preProcess_image(self, img):
+    #     """function to enhance image"""
+    #     claheImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #     # create a CLAHE object.
+    #     clahe = cv2.createCLAHE(clipLimit=100.0, tileGridSize=(1, 1))
+    #     clahe2 = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(100, 100))
+
+    #     # apply CLAHE to the image
+    #     claheImg = cv2.GaussianBlur(claheImg, (5, 5), 0, 0)
+    #     claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
+    #     claheImg = clahe.apply(claheImg)
+    #     claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
+    #     claheImg = clahe2.apply(claheImg)
+
+    #     # de-noise
+    #     # claheImg = cv2.fastNlMeansDenoising(claheImg, None, 30, 5, 50)
+
+    #     # combine the images into a 2 channel image
+    #     # claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+    #     # Convert
+    #     # claheImg = claheImg.transpose(
+    #     #     (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+    #     claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+
+    #     return claheImg
 
     def load_image(self, index, shrink_size=None):
         """Load image.
@@ -338,7 +366,7 @@ class TrainValDataset(Dataset):
                     if ratio < 1 and not self.augment
                     else cv2.INTER_LINEAR,
                 )
-            im = self.preProcess_image(im)
+            # im = self.preProcess_image(im)
             return im, (h0, w0), im.shape[:2]
 
     @staticmethod
@@ -776,34 +804,34 @@ class LoadData:
             # Read image
             self.count += 1
             img = cv2.imread(path)  # BGR
-            img = self.preProcess_image(img)
+            # img = self.preProcess_image(img)
         return img, path, self.cap
 
-    def preProcess_image(self, img):
-        """function to enhance image"""
-        claheImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # create the CLAHE objects.
-        clahe = cv2.createCLAHE(clipLimit=100.0, tileGridSize=(1, 1))
-        clahe2 = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(100, 100))
+    # def preProcess_image(self, img):
+    #     """function to enhance image"""
+    #     claheImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #     # create the CLAHE objects.
+    #     clahe = cv2.createCLAHE(clipLimit=100.0, tileGridSize=(1, 1))
+    #     clahe2 = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(100, 100))
 
-        # apply CLAHE to the image
-        claheImg = cv2.GaussianBlur(claheImg, (5, 5), 0, 0)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
-        claheImg = clahe.apply(claheImg)
-        claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
-        claheImg = clahe2.apply(claheImg)
+    #     # apply CLAHE to the image
+    #     claheImg = cv2.GaussianBlur(claheImg, (5, 5), 0, 0)
+    #     claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
+    #     claheImg = clahe.apply(claheImg)
+    #     claheImg = cv2.convertScaleAbs(claheImg, alpha=1)
+    #     claheImg = clahe2.apply(claheImg)
 
-        # de-noise
-        # claheImg = cv2.fastNlMeansDenoising(claheImg, None, 30, 5, 50)
+    #     # de-noise
+    #     # claheImg = cv2.fastNlMeansDenoising(claheImg, None, 30, 5, 50)
 
-        # combine the images into a 2 channel image
-        # claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
-        # Convert
-        # claheImg = claheImg.transpose(
-        #     (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-        claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+    #     # combine the images into a 2 channel image
+    #     # claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+    #     # Convert
+    #     # claheImg = claheImg.transpose(
+    #     #     (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+    #     claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
 
-        return claheImg
+    #     return claheImg
 
     def add_video(self, path):
         self.frame = 0

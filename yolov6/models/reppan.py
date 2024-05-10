@@ -1,9 +1,12 @@
 import torch
 from torch import nn
 from yolov6.layers.common import RepBlock, RepVGGBlock, BottleRep, BepC3, ConvBNReLU, Transpose, BiFusion, \
-                                MBLABlock, ConvBNHS, CSPBlock, DPBlock
+    MBLABlock, ConvBNHS, CSPBlock, DPBlock
+import math
 
 # _QUANT=False
+
+
 class RepPANNeck(nn.Module):
     """RepPANNeck Module
     EfficientRep is the default backbone of this model.
@@ -92,9 +95,12 @@ class RepPANNeck(nn.Module):
         # Insert fakequant after upsample op to build TensorRT engine
         from pytorch_quantization import nn as quant_nn
         from pytorch_quantization.tensor_quant import QuantDescriptor
-        conv2d_input_default_desc = QuantDescriptor(num_bits=num_bits, calib_method=calib_method)
-        self.upsample_feat0_quant = quant_nn.TensorQuantizer(conv2d_input_default_desc)
-        self.upsample_feat1_quant = quant_nn.TensorQuantizer(conv2d_input_default_desc)
+        conv2d_input_default_desc = QuantDescriptor(
+            num_bits=num_bits, calib_method=calib_method)
+        self.upsample_feat0_quant = quant_nn.TensorQuantizer(
+            conv2d_input_default_desc)
+        self.upsample_feat1_quant = quant_nn.TensorQuantizer(
+            conv2d_input_default_desc)
         # global _QUANT
         self._QUANT = True
 
@@ -147,70 +153,69 @@ class RepBiFPANNeck(nn.Module):
         assert num_repeats is not None
 
         self.reduce_layer0 = ConvBNReLU(
-            in_channels=channels_list[4], # 1024
-            out_channels=channels_list[5], # 256
+            in_channels=channels_list[4],  # 1024
+            out_channels=channels_list[5],  # 256
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion0 = BiFusion(
-            in_channels=[channels_list[3], channels_list[2]], # 512, 256
-            out_channels=channels_list[5], # 256
+            in_channels=[channels_list[3], channels_list[2]],  # 512, 256
+            out_channels=channels_list[5],  # 256
         )
         self.Rep_p4 = RepBlock(
-            in_channels=channels_list[5], # 256
-            out_channels=channels_list[5], # 256
+            in_channels=channels_list[5],  # 256
+            out_channels=channels_list[5],  # 256
             n=num_repeats[5],
             block=block
         )
 
         self.reduce_layer1 = ConvBNReLU(
-            in_channels=channels_list[5], # 256
-            out_channels=channels_list[6], # 128
+            in_channels=channels_list[5],  # 256
+            out_channels=channels_list[6],  # 128
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion1 = BiFusion(
-            in_channels=[channels_list[2], channels_list[1]], # 256, 128
-            out_channels=channels_list[6], # 128
+            in_channels=[channels_list[2], channels_list[1]],  # 256, 128
+            out_channels=channels_list[6],  # 128
         )
 
         self.Rep_p3 = RepBlock(
-            in_channels=channels_list[6], # 128
-            out_channels=channels_list[6], # 128
+            in_channels=channels_list[6],  # 128
+            out_channels=channels_list[6],  # 128
             n=num_repeats[6],
             block=block
         )
 
         self.downsample2 = ConvBNReLU(
-            in_channels=channels_list[6], # 128
-            out_channels=channels_list[7], # 128
+            in_channels=channels_list[6],  # 128
+            out_channels=channels_list[7],  # 128
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n3 = RepBlock(
-            in_channels=channels_list[6] + channels_list[7], # 128 + 128
-            out_channels=channels_list[8], # 256
+            in_channels=channels_list[6] + channels_list[7],  # 128 + 128
+            out_channels=channels_list[8],  # 256
             n=num_repeats[7],
             block=block
         )
 
         self.downsample1 = ConvBNReLU(
-            in_channels=channels_list[8], # 256
-            out_channels=channels_list[9], # 256
+            in_channels=channels_list[8],  # 256
+            out_channels=channels_list[9],  # 256
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n4 = RepBlock(
-            in_channels=channels_list[5] + channels_list[9], # 256 + 256
-            out_channels=channels_list[10], # 512
+            in_channels=channels_list[5] + channels_list[9],  # 256 + 256
+            out_channels=channels_list[10],  # 512
             n=num_repeats[8],
             block=block
         )
-
 
     def forward(self, input):
 
@@ -244,6 +249,7 @@ class RepPANNeck6(nn.Module):
     """
     # [64, 128, 256, 512, 768, 1024]
     # [512, 256, 128, 256, 512, 1024]
+
     def __init__(
         self,
         channels_list=None,
@@ -256,104 +262,103 @@ class RepPANNeck6(nn.Module):
         assert num_repeats is not None
 
         self.reduce_layer0 = ConvBNReLU(
-            in_channels=channels_list[5], # 1024
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[5],  # 1024
+            out_channels=channels_list[6],  # 512
             kernel_size=1,
             stride=1
         )
 
         self.upsample0 = Transpose(
             in_channels=channels_list[6],  # 512
-            out_channels=channels_list[6], # 512
+            out_channels=channels_list[6],  # 512
         )
 
         self.Rep_p5 = RepBlock(
-            in_channels=channels_list[4] + channels_list[6], # 768 + 512
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[4] + channels_list[6],  # 768 + 512
+            out_channels=channels_list[6],  # 512
             n=num_repeats[6],
             block=block
         )
 
         self.reduce_layer1 = ConvBNReLU(
             in_channels=channels_list[6],  # 512
-            out_channels=channels_list[7], # 256
+            out_channels=channels_list[7],  # 256
             kernel_size=1,
             stride=1
         )
 
         self.upsample1 = Transpose(
-            in_channels=channels_list[7], # 256
-            out_channels=channels_list[7] # 256
+            in_channels=channels_list[7],  # 256
+            out_channels=channels_list[7]  # 256
         )
 
         self.Rep_p4 = RepBlock(
-            in_channels=channels_list[3] + channels_list[7], # 512 + 256
-            out_channels=channels_list[7], # 256
+            in_channels=channels_list[3] + channels_list[7],  # 512 + 256
+            out_channels=channels_list[7],  # 256
             n=num_repeats[7],
             block=block
         )
 
         self.reduce_layer2 = ConvBNReLU(
             in_channels=channels_list[7],  # 256
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=1,
             stride=1
         )
 
         self.upsample2 = Transpose(
-            in_channels=channels_list[8], # 128
-            out_channels=channels_list[8] # 128
+            in_channels=channels_list[8],  # 128
+            out_channels=channels_list[8]  # 128
         )
 
         self.Rep_p3 = RepBlock(
-            in_channels=channels_list[2] + channels_list[8], # 256 + 128
-            out_channels=channels_list[8], # 128
+            in_channels=channels_list[2] + channels_list[8],  # 256 + 128
+            out_channels=channels_list[8],  # 128
             n=num_repeats[8],
             block=block
         )
 
         self.downsample2 = ConvBNReLU(
             in_channels=channels_list[8],  # 128
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n4 = RepBlock(
-            in_channels=channels_list[8] + channels_list[8], # 128 + 128
-            out_channels=channels_list[9], # 256
+            in_channels=channels_list[8] + channels_list[8],  # 128 + 128
+            out_channels=channels_list[9],  # 256
             n=num_repeats[9],
             block=block
         )
 
         self.downsample1 = ConvBNReLU(
             in_channels=channels_list[9],  # 256
-            out_channels=channels_list[9], # 256
+            out_channels=channels_list[9],  # 256
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n5 = RepBlock(
-            in_channels=channels_list[7] + channels_list[9], # 256 + 256
-            out_channels=channels_list[10], # 512
+            in_channels=channels_list[7] + channels_list[9],  # 256 + 256
+            out_channels=channels_list[10],  # 512
             n=num_repeats[10],
             block=block
         )
 
         self.downsample0 = ConvBNReLU(
             in_channels=channels_list[10],  # 512
-            out_channels=channels_list[10], # 512
+            out_channels=channels_list[10],  # 512
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n6 = RepBlock(
-            in_channels=channels_list[6] + channels_list[10], # 512 + 512
-            out_channels=channels_list[11], # 1024
+            in_channels=channels_list[6] + channels_list[10],  # 512 + 512
+            out_channels=channels_list[11],  # 1024
             n=num_repeats[11],
             block=block
         )
-
 
     def forward(self, input):
 
@@ -372,19 +377,19 @@ class RepPANNeck6(nn.Module):
         fpn_out2 = self.reduce_layer2(f_out1)
         upsample_feat2 = self.upsample2(fpn_out2)
         f_concat_layer2 = torch.cat([upsample_feat2, x3], 1)
-        pan_out3 = self.Rep_p3(f_concat_layer2) # P3
+        pan_out3 = self.Rep_p3(f_concat_layer2)  # P3
 
         down_feat2 = self.downsample2(pan_out3)
         p_concat_layer2 = torch.cat([down_feat2, fpn_out2], 1)
-        pan_out2 = self.Rep_n4(p_concat_layer2) # P4
+        pan_out2 = self.Rep_n4(p_concat_layer2)  # P4
 
         down_feat1 = self.downsample1(pan_out2)
         p_concat_layer1 = torch.cat([down_feat1, fpn_out1], 1)
-        pan_out1 = self.Rep_n5(p_concat_layer1) # P5
+        pan_out1 = self.Rep_n5(p_concat_layer1)  # P5
 
         down_feat0 = self.downsample0(pan_out1)
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
-        pan_out0 = self.Rep_n6(p_concat_layer0) # P6
+        pan_out0 = self.Rep_n6(p_concat_layer0)  # P6
 
         outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
 
@@ -408,105 +413,147 @@ class RepBiFPANNeck6(nn.Module):
         assert channels_list is not None
         assert num_repeats is not None
 
+        self.num_of_attention_heads = 4
+
         self.reduce_layer0 = ConvBNReLU(
-            in_channels=channels_list[5], # 1024
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[5],  # 1024
+            out_channels=channels_list[6],  # 512
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion0 = BiFusion(
-            in_channels=[channels_list[4], channels_list[6]], # 768, 512
-            out_channels=channels_list[6], # 512
+            in_channels=[channels_list[4], channels_list[6]],  # 768, 512
+            out_channels=channels_list[6],  # 512
         )
 
         self.Rep_p5 = RepBlock(
-            in_channels=channels_list[6], # 512
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[6],  # 512
+            out_channels=channels_list[6],  # 512
             n=num_repeats[6],
             block=block
         )
 
+        self.attention_block_1 = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[6],
+                num_heads=self.num_of_attention_heads
+            )
+        )
+
         self.reduce_layer1 = ConvBNReLU(
             in_channels=channels_list[6],  # 512
-            out_channels=channels_list[7], # 256
+            out_channels=channels_list[7],  # 256
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion1 = BiFusion(
-            in_channels=[channels_list[3], channels_list[7]], # 512, 256
-            out_channels=channels_list[7], # 256
+            in_channels=[channels_list[3], channels_list[7]],  # 512, 256
+            out_channels=channels_list[7],  # 256
         )
 
         self.Rep_p4 = RepBlock(
-            in_channels=channels_list[7], # 256
-            out_channels=channels_list[7], # 256
+            in_channels=channels_list[7],  # 256
+            out_channels=channels_list[7],  # 256
             n=num_repeats[7],
             block=block
         )
 
+        self.attention_block_2 = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[7],
+                num_heads=self.num_of_attention_heads
+            )
+        )
+
         self.reduce_layer2 = ConvBNReLU(
             in_channels=channels_list[7],  # 256
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion2 = BiFusion(
-            in_channels=[channels_list[2], channels_list[8]], # 256, 128
-            out_channels=channels_list[8], # 128
+            in_channels=[channels_list[2], channels_list[8]],  # 256, 128
+            out_channels=channels_list[8],  # 128
         )
 
         self.Rep_p3 = RepBlock(
-            in_channels=channels_list[8], # 128
-            out_channels=channels_list[8], # 128
+            in_channels=channels_list[8],  # 128
+            out_channels=channels_list[8],  # 128
             n=num_repeats[8],
             block=block
+        )
+        self.attention_block_3 = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[8],
+                num_heads=self.num_of_attention_heads
+            )
         )
 
         self.downsample2 = ConvBNReLU(
             in_channels=channels_list[8],  # 128
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n4 = RepBlock(
-            in_channels=channels_list[8] + channels_list[8], # 128 + 128
-            out_channels=channels_list[9], # 256
+            in_channels=channels_list[8] + channels_list[8],  # 128 + 128
+            out_channels=channels_list[9],  # 256
             n=num_repeats[9],
             block=block
         )
 
+        self.attention_block_4 = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[9],
+                num_heads=self.num_of_attention_heads
+            )
+        )
+
         self.downsample1 = ConvBNReLU(
             in_channels=channels_list[9],  # 256
-            out_channels=channels_list[9], # 256
+            out_channels=channels_list[9],  # 256
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n5 = RepBlock(
-            in_channels=channels_list[7] + channels_list[9], # 256 + 256
-            out_channels=channels_list[10], # 512
+            in_channels=channels_list[7] + channels_list[9],  # 256 + 256
+            out_channels=channels_list[10],  # 512
             n=num_repeats[10],
             block=block
         )
 
+        self.attention_block_5 = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[10],
+                num_heads=self.num_of_attention_heads
+            )
+        )
+
         self.downsample0 = ConvBNReLU(
             in_channels=channels_list[10],  # 512
-            out_channels=channels_list[10], # 512
+            out_channels=channels_list[10],  # 512
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n6 = RepBlock(
-            in_channels=channels_list[6] + channels_list[10], # 512 + 512
-            out_channels=channels_list[11], # 1024
+            in_channels=channels_list[6] + channels_list[10],  # 512 + 512
+            out_channels=channels_list[11],  # 1024
             n=num_repeats[11],
             block=block
         )
 
+        self.attention_block_6 = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[11],
+                num_heads=self.num_of_attention_heads
+            )
+        )
 
     def forward(self, input):
 
@@ -515,30 +562,101 @@ class RepBiFPANNeck6(nn.Module):
         fpn_out0 = self.reduce_layer0(x0)
         f_concat_layer0 = self.Bifusion0([fpn_out0, x1, x2])
         f_out0 = self.Rep_p5(f_concat_layer0)
+        # f_out0 = self.attention_block_1(f_out0)
 
         fpn_out1 = self.reduce_layer1(f_out0)
         f_concat_layer1 = self.Bifusion1([fpn_out1, x2, x3])
         f_out1 = self.Rep_p4(f_concat_layer1)
+        # f_out1 = self.attention_block_2(f_out1)
 
         fpn_out2 = self.reduce_layer2(f_out1)
         f_concat_layer2 = self.Bifusion2([fpn_out2, x3, x4])
-        pan_out3 = self.Rep_p3(f_concat_layer2) # P3
+        pan_out3 = self.Rep_p3(f_concat_layer2)  # P3
+        # pan_out3 = self.attention_block_3(pan_out3)
 
         down_feat2 = self.downsample2(pan_out3)
         p_concat_layer2 = torch.cat([down_feat2, fpn_out2], 1)
-        pan_out2 = self.Rep_n4(p_concat_layer2) # P4
+        pan_out2 = self.Rep_n4(p_concat_layer2)  # P4
+        # pan_out2 = self.attention_block_4(pan_out2)
 
         down_feat1 = self.downsample1(pan_out2)
         p_concat_layer1 = torch.cat([down_feat1, fpn_out1], 1)
-        pan_out1 = self.Rep_n5(p_concat_layer1) # P5
+        pan_out1 = self.Rep_n5(p_concat_layer1)  # P5
+        # pan_out1 = self.attention_block_5(pan_out1)
 
         down_feat0 = self.downsample0(pan_out1)
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
-        pan_out0 = self.Rep_n6(p_concat_layer0) # P6
+        pan_out0 = self.Rep_n6(p_concat_layer0)  # P6
+        # pan_out0 = self.attention_block_6(pan_out0)
 
         outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
 
         return outputs
+
+
+class MultiHeadedSelfAttention(nn.Module):
+    """ Self attention Layer"""
+
+    def __init__(self, in_dim, num_heads):
+        assert in_dim % num_heads == 0, f"input_dim ({in_dim}) must be divisible by num_heads ({num_heads})"
+        assert isinstance(
+            in_dim, int), f"input_dim ({in_dim}) must be an integer"
+        super(MultiHeadedSelfAttention, self).__init__()
+        self.chanel_in = in_dim
+        self.num_heads = num_heads
+        self.k_dim = in_dim / num_heads
+
+        self.conv_q = nn.Conv2d(
+            in_channels=in_dim, out_channels=in_dim // self.num_heads, kernel_size=1)
+        self.conv_k = nn.Conv2d(
+            in_channels=in_dim, out_channels=in_dim // self.num_heads, kernel_size=1)
+        self.conv_v = nn.Conv2d(
+            in_channels=in_dim, out_channels=in_dim, kernel_size=1)
+        self.gamma = nn.Parameter(torch.zeros(1))
+
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, x):
+        batch_size, C, width, height = x.size()
+
+        q = self.conv_q(x)
+        k = self.conv_k(x)
+        v = self.conv_v(x)
+
+        q = q.view(batch_size, -1, width * height)
+        k = k.view(batch_size, -1, width * height)
+        v = v.view(batch_size, -1, width * height)
+
+        # print(f"proj_q: {q.size()}")
+        # print(f"proj_k: {k.size()}")
+        # print(f"proj_v: {v.size()}")
+
+        q_heads = q.view(batch_size, self.num_heads,
+                         -1, height * width)
+        k_heads = k.view(batch_size, self.num_heads,
+                         -1, height * width)
+        v_heads = v.view(batch_size, self.num_heads,
+                         -1, height * width)
+
+        # print(f"q_heads: {q_heads.size()}")
+        # print(f"k_heads: {k_heads.size()}")
+        # print(f"v_heads: {v_heads.size()}")
+
+        attention_scores = torch.matmul(
+            q_heads.transpose(-2, -1), k_heads) / math.sqrt(self.k_dim)
+
+        # print(f"attention_scores: {attention_scores.size()}")
+
+        attention_weights = self.softmax(attention_scores)
+
+        # print(f"attention_weights: {attention_weights.size()}")
+
+        out = torch.matmul(v_heads, attention_weights.transpose(-2, -1))
+        # print(f"out: {out.size()}")
+        out = out.view(batch_size, C, width, height)
+
+        out = (self.gamma * out) + x
+        return out
 
 
 class CSPRepPANNeck(nn.Module):
@@ -551,7 +669,7 @@ class CSPRepPANNeck(nn.Module):
         channels_list=None,
         num_repeats=None,
         block=BottleRep,
-        csp_e=float(1)/2,
+        csp_e=float(1) / 2,
         stage_block_type="BepC3"
     ):
         super().__init__()
@@ -567,71 +685,71 @@ class CSPRepPANNeck(nn.Module):
         assert num_repeats is not None
 
         self.Rep_p4 = stage_block(
-            in_channels=channels_list[3] + channels_list[5], # 512 + 256
-            out_channels=channels_list[5], # 256
+            in_channels=channels_list[3] + channels_list[5],  # 512 + 256
+            out_channels=channels_list[5],  # 256
             n=num_repeats[5],
             e=csp_e,
             block=block
         )
 
         self.Rep_p3 = stage_block(
-            in_channels=channels_list[2] + channels_list[6], # 256 + 128
-            out_channels=channels_list[6], # 128
+            in_channels=channels_list[2] + channels_list[6],  # 256 + 128
+            out_channels=channels_list[6],  # 128
             n=num_repeats[6],
             e=csp_e,
             block=block
         )
 
         self.Rep_n3 = stage_block(
-            in_channels=channels_list[6] + channels_list[7], # 128 + 128
-            out_channels=channels_list[8], # 256
+            in_channels=channels_list[6] + channels_list[7],  # 128 + 128
+            out_channels=channels_list[8],  # 256
             n=num_repeats[7],
             e=csp_e,
             block=block
         )
 
         self.Rep_n4 = stage_block(
-            in_channels=channels_list[5] + channels_list[9], # 256 + 256
-            out_channels=channels_list[10], # 512
+            in_channels=channels_list[5] + channels_list[9],  # 256 + 256
+            out_channels=channels_list[10],  # 512
             n=num_repeats[8],
             e=csp_e,
             block=block
         )
 
         self.reduce_layer0 = ConvBNReLU(
-            in_channels=channels_list[4], # 1024
-            out_channels=channels_list[5], # 256
+            in_channels=channels_list[4],  # 1024
+            out_channels=channels_list[5],  # 256
             kernel_size=1,
             stride=1
         )
 
         self.upsample0 = Transpose(
-            in_channels=channels_list[5], # 256
-            out_channels=channels_list[5], # 256
+            in_channels=channels_list[5],  # 256
+            out_channels=channels_list[5],  # 256
         )
 
         self.reduce_layer1 = ConvBNReLU(
-            in_channels=channels_list[5], # 256
-            out_channels=channels_list[6], # 128
+            in_channels=channels_list[5],  # 256
+            out_channels=channels_list[6],  # 128
             kernel_size=1,
             stride=1
         )
 
         self.upsample1 = Transpose(
-            in_channels=channels_list[6], # 128
-            out_channels=channels_list[6] # 128
+            in_channels=channels_list[6],  # 128
+            out_channels=channels_list[6]  # 128
         )
 
         self.downsample2 = ConvBNReLU(
-            in_channels=channels_list[6], # 128
-            out_channels=channels_list[7], # 128
+            in_channels=channels_list[6],  # 128
+            out_channels=channels_list[7],  # 128
             kernel_size=3,
             stride=2
         )
 
         self.downsample1 = ConvBNReLU(
-            in_channels=channels_list[8], # 256
-            out_channels=channels_list[9], # 256
+            in_channels=channels_list[8],  # 256
+            out_channels=channels_list[9],  # 256
             kernel_size=3,
             stride=2
         )
@@ -673,7 +791,7 @@ class CSPRepBiFPANNeck(nn.Module):
         channels_list=None,
         num_repeats=None,
         block=BottleRep,
-        csp_e=float(1)/2,
+        csp_e=float(1) / 2,
         stage_block_type="BepC3"
     ):
         super().__init__()
@@ -689,76 +807,74 @@ class CSPRepBiFPANNeck(nn.Module):
             raise NotImplementedError
 
         self.reduce_layer0 = ConvBNReLU(
-            in_channels=channels_list[4], # 1024
-            out_channels=channels_list[5], # 256
+            in_channels=channels_list[4],  # 1024
+            out_channels=channels_list[5],  # 256
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion0 = BiFusion(
-            in_channels=[channels_list[3], channels_list[2]], # 512, 256
-            out_channels=channels_list[5], # 256
+            in_channels=[channels_list[3], channels_list[2]],  # 512, 256
+            out_channels=channels_list[5],  # 256
         )
 
         self.Rep_p4 = stage_block(
-            in_channels=channels_list[5], # 256
-            out_channels=channels_list[5], # 256
+            in_channels=channels_list[5],  # 256
+            out_channels=channels_list[5],  # 256
             n=num_repeats[5],
             e=csp_e,
             block=block
         )
 
         self.reduce_layer1 = ConvBNReLU(
-            in_channels=channels_list[5], # 256
-            out_channels=channels_list[6], # 128
+            in_channels=channels_list[5],  # 256
+            out_channels=channels_list[6],  # 128
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion1 = BiFusion(
-            in_channels=[channels_list[2], channels_list[1]], # 256, 128
-            out_channels=channels_list[6], # 128
+            in_channels=[channels_list[2], channels_list[1]],  # 256, 128
+            out_channels=channels_list[6],  # 128
         )
 
         self.Rep_p3 = stage_block(
-            in_channels=channels_list[6], # 128
-            out_channels=channels_list[6], # 128
+            in_channels=channels_list[6],  # 128
+            out_channels=channels_list[6],  # 128
             n=num_repeats[6],
             e=csp_e,
             block=block
         )
 
         self.downsample2 = ConvBNReLU(
-            in_channels=channels_list[6], # 128
-            out_channels=channels_list[7], # 128
+            in_channels=channels_list[6],  # 128
+            out_channels=channels_list[7],  # 128
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n3 = stage_block(
-            in_channels=channels_list[6] + channels_list[7], # 128 + 128
-            out_channels=channels_list[8], # 256
+            in_channels=channels_list[6] + channels_list[7],  # 128 + 128
+            out_channels=channels_list[8],  # 256
             n=num_repeats[7],
             e=csp_e,
             block=block
         )
 
         self.downsample1 = ConvBNReLU(
-            in_channels=channels_list[8], # 256
-            out_channels=channels_list[9], # 256
+            in_channels=channels_list[8],  # 256
+            out_channels=channels_list[9],  # 256
             kernel_size=3,
             stride=2
         )
 
-
         self.Rep_n4 = stage_block(
-            in_channels=channels_list[5] + channels_list[9], # 256 + 256
-            out_channels=channels_list[10], # 512
+            in_channels=channels_list[5] + channels_list[9],  # 256 + 256
+            out_channels=channels_list[10],  # 512
             n=num_repeats[8],
             e=csp_e,
             block=block
         )
-
 
     def forward(self, input):
 
@@ -790,12 +906,13 @@ class CSPRepPANNeck_P6(nn.Module):
     """
     # [64, 128, 256, 512, 768, 1024]
     # [512, 256, 128, 256, 512, 1024]
+
     def __init__(
         self,
         channels_list=None,
         num_repeats=None,
         block=BottleRep,
-        csp_e=float(1)/2,
+        csp_e=float(1) / 2,
         stage_block_type="BepC3"
     ):
         super().__init__()
@@ -811,20 +928,20 @@ class CSPRepPANNeck_P6(nn.Module):
             raise NotImplementedError
 
         self.reduce_layer0 = ConvBNReLU(
-            in_channels=channels_list[5], # 1024
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[5],  # 1024
+            out_channels=channels_list[6],  # 512
             kernel_size=1,
             stride=1
         )
 
         self.upsample0 = Transpose(
             in_channels=channels_list[6],  # 512
-            out_channels=channels_list[6], # 512
+            out_channels=channels_list[6],  # 512
         )
 
         self.Rep_p5 = stage_block(
-            in_channels=channels_list[4] + channels_list[6], # 768 + 512
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[4] + channels_list[6],  # 768 + 512
+            out_channels=channels_list[6],  # 512
             n=num_repeats[6],
             e=csp_e,
             block=block
@@ -832,19 +949,19 @@ class CSPRepPANNeck_P6(nn.Module):
 
         self.reduce_layer1 = ConvBNReLU(
             in_channels=channels_list[6],  # 512
-            out_channels=channels_list[7], # 256
+            out_channels=channels_list[7],  # 256
             kernel_size=1,
             stride=1
         )
 
         self.upsample1 = Transpose(
-            in_channels=channels_list[7], # 256
-            out_channels=channels_list[7] # 256
+            in_channels=channels_list[7],  # 256
+            out_channels=channels_list[7]  # 256
         )
 
         self.Rep_p4 = stage_block(
-            in_channels=channels_list[3] + channels_list[7], # 512 + 256
-            out_channels=channels_list[7], # 256
+            in_channels=channels_list[3] + channels_list[7],  # 512 + 256
+            out_channels=channels_list[7],  # 256
             n=num_repeats[7],
             e=csp_e,
             block=block
@@ -852,19 +969,19 @@ class CSPRepPANNeck_P6(nn.Module):
 
         self.reduce_layer2 = ConvBNReLU(
             in_channels=channels_list[7],  # 256
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=1,
             stride=1
         )
 
         self.upsample2 = Transpose(
-            in_channels=channels_list[8], # 128
-            out_channels=channels_list[8] # 128
+            in_channels=channels_list[8],  # 128
+            out_channels=channels_list[8]  # 128
         )
 
         self.Rep_p3 = stage_block(
-            in_channels=channels_list[2] + channels_list[8], # 256 + 128
-            out_channels=channels_list[8], # 128
+            in_channels=channels_list[2] + channels_list[8],  # 256 + 128
+            out_channels=channels_list[8],  # 128
             n=num_repeats[8],
             e=csp_e,
             block=block
@@ -872,14 +989,14 @@ class CSPRepPANNeck_P6(nn.Module):
 
         self.downsample2 = ConvBNReLU(
             in_channels=channels_list[8],  # 128
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n4 = stage_block(
-            in_channels=channels_list[8] + channels_list[8], # 128 + 128
-            out_channels=channels_list[9], # 256
+            in_channels=channels_list[8] + channels_list[8],  # 128 + 128
+            out_channels=channels_list[9],  # 256
             n=num_repeats[9],
             e=csp_e,
             block=block
@@ -887,14 +1004,14 @@ class CSPRepPANNeck_P6(nn.Module):
 
         self.downsample1 = ConvBNReLU(
             in_channels=channels_list[9],  # 256
-            out_channels=channels_list[9], # 256
+            out_channels=channels_list[9],  # 256
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n5 = stage_block(
-            in_channels=channels_list[7] + channels_list[9], # 256 + 256
-            out_channels=channels_list[10], # 512
+            in_channels=channels_list[7] + channels_list[9],  # 256 + 256
+            out_channels=channels_list[10],  # 512
             n=num_repeats[10],
             e=csp_e,
             block=block
@@ -902,19 +1019,18 @@ class CSPRepPANNeck_P6(nn.Module):
 
         self.downsample0 = ConvBNReLU(
             in_channels=channels_list[10],  # 512
-            out_channels=channels_list[10], # 512
+            out_channels=channels_list[10],  # 512
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n6 = stage_block(
-            in_channels=channels_list[6] + channels_list[10], # 512 + 512
-            out_channels=channels_list[11], # 1024
+            in_channels=channels_list[6] + channels_list[10],  # 512 + 512
+            out_channels=channels_list[11],  # 1024
             n=num_repeats[11],
             e=csp_e,
             block=block
         )
-
 
     def forward(self, input):
 
@@ -933,19 +1049,19 @@ class CSPRepPANNeck_P6(nn.Module):
         fpn_out2 = self.reduce_layer2(f_out1)
         upsample_feat2 = self.upsample2(fpn_out2)
         f_concat_layer2 = torch.cat([upsample_feat2, x3], 1)
-        pan_out3 = self.Rep_p3(f_concat_layer2) # P3
+        pan_out3 = self.Rep_p3(f_concat_layer2)  # P3
 
         down_feat2 = self.downsample2(pan_out3)
         p_concat_layer2 = torch.cat([down_feat2, fpn_out2], 1)
-        pan_out2 = self.Rep_n4(p_concat_layer2) # P4
+        pan_out2 = self.Rep_n4(p_concat_layer2)  # P4
 
         down_feat1 = self.downsample1(pan_out2)
         p_concat_layer1 = torch.cat([down_feat1, fpn_out1], 1)
-        pan_out1 = self.Rep_n5(p_concat_layer1) # P5
+        pan_out1 = self.Rep_n5(p_concat_layer1)  # P5
 
         down_feat0 = self.downsample0(pan_out1)
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
-        pan_out0 = self.Rep_n6(p_concat_layer0) # P6
+        pan_out0 = self.Rep_n6(p_concat_layer0)  # P6
 
         outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
 
@@ -957,12 +1073,13 @@ class CSPRepBiFPANNeck_P6(nn.Module):
     """
     # [64, 128, 256, 512, 768, 1024]
     # [512, 256, 128, 256, 512, 1024]
+
     def __init__(
         self,
         channels_list=None,
         num_repeats=None,
         block=BottleRep,
-        csp_e=float(1)/2,
+        csp_e=float(1) / 2,
         stage_block_type="BepC3"
     ):
         super().__init__()
@@ -978,20 +1095,20 @@ class CSPRepBiFPANNeck_P6(nn.Module):
             raise NotImplementedError
 
         self.reduce_layer0 = ConvBNReLU(
-            in_channels=channels_list[5], # 1024
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[5],  # 1024
+            out_channels=channels_list[6],  # 512
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion0 = BiFusion(
-            in_channels=[channels_list[4], channels_list[6]], # 768, 512
-            out_channels=channels_list[6], # 512
+            in_channels=[channels_list[4], channels_list[6]],  # 768, 512
+            out_channels=channels_list[6],  # 512
         )
 
         self.Rep_p5 = stage_block(
-            in_channels=channels_list[6], # 512
-            out_channels=channels_list[6], # 512
+            in_channels=channels_list[6],  # 512
+            out_channels=channels_list[6],  # 512
             n=num_repeats[6],
             e=csp_e,
             block=block
@@ -999,19 +1116,19 @@ class CSPRepBiFPANNeck_P6(nn.Module):
 
         self.reduce_layer1 = ConvBNReLU(
             in_channels=channels_list[6],  # 512
-            out_channels=channels_list[7], # 256
+            out_channels=channels_list[7],  # 256
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion1 = BiFusion(
-            in_channels=[channels_list[3], channels_list[7]], # 512, 256
-            out_channels=channels_list[7], # 256
+            in_channels=[channels_list[3], channels_list[7]],  # 512, 256
+            out_channels=channels_list[7],  # 256
         )
 
         self.Rep_p4 = stage_block(
-            in_channels=channels_list[7], # 256
-            out_channels=channels_list[7], # 256
+            in_channels=channels_list[7],  # 256
+            out_channels=channels_list[7],  # 256
             n=num_repeats[7],
             e=csp_e,
             block=block
@@ -1019,19 +1136,19 @@ class CSPRepBiFPANNeck_P6(nn.Module):
 
         self.reduce_layer2 = ConvBNReLU(
             in_channels=channels_list[7],  # 256
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=1,
             stride=1
         )
 
         self.Bifusion2 = BiFusion(
-            in_channels=[channels_list[2], channels_list[8]], # 256, 128
-            out_channels=channels_list[8], # 128
+            in_channels=[channels_list[2], channels_list[8]],  # 256, 128
+            out_channels=channels_list[8],  # 128
         )
 
         self.Rep_p3 = stage_block(
-            in_channels=channels_list[8], # 128
-            out_channels=channels_list[8], # 128
+            in_channels=channels_list[8],  # 128
+            out_channels=channels_list[8],  # 128
             n=num_repeats[8],
             e=csp_e,
             block=block
@@ -1039,14 +1156,14 @@ class CSPRepBiFPANNeck_P6(nn.Module):
 
         self.downsample2 = ConvBNReLU(
             in_channels=channels_list[8],  # 128
-            out_channels=channels_list[8], # 128
+            out_channels=channels_list[8],  # 128
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n4 = stage_block(
-            in_channels=channels_list[8] + channels_list[8], # 128 + 128
-            out_channels=channels_list[9], # 256
+            in_channels=channels_list[8] + channels_list[8],  # 128 + 128
+            out_channels=channels_list[9],  # 256
             n=num_repeats[9],
             e=csp_e,
             block=block
@@ -1054,14 +1171,14 @@ class CSPRepBiFPANNeck_P6(nn.Module):
 
         self.downsample1 = ConvBNReLU(
             in_channels=channels_list[9],  # 256
-            out_channels=channels_list[9], # 256
+            out_channels=channels_list[9],  # 256
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n5 = stage_block(
-            in_channels=channels_list[7] + channels_list[9], # 256 + 256
-            out_channels=channels_list[10], # 512
+            in_channels=channels_list[7] + channels_list[9],  # 256 + 256
+            out_channels=channels_list[10],  # 512
             n=num_repeats[10],
             e=csp_e,
             block=block
@@ -1069,19 +1186,18 @@ class CSPRepBiFPANNeck_P6(nn.Module):
 
         self.downsample0 = ConvBNReLU(
             in_channels=channels_list[10],  # 512
-            out_channels=channels_list[10], # 512
+            out_channels=channels_list[10],  # 512
             kernel_size=3,
             stride=2
         )
 
         self.Rep_n6 = stage_block(
-            in_channels=channels_list[6] + channels_list[10], # 512 + 512
-            out_channels=channels_list[11], # 1024
+            in_channels=channels_list[6] + channels_list[10],  # 512 + 512
+            out_channels=channels_list[11],  # 1024
             n=num_repeats[11],
             e=csp_e,
             block=block
         )
-
 
     def forward(self, input):
 
@@ -1097,23 +1213,24 @@ class CSPRepBiFPANNeck_P6(nn.Module):
 
         fpn_out2 = self.reduce_layer2(f_out1)
         f_concat_layer2 = self.Bifusion2([fpn_out2, x3, x4])
-        pan_out3 = self.Rep_p3(f_concat_layer2) # P3
+        pan_out3 = self.Rep_p3(f_concat_layer2)  # P3
 
         down_feat2 = self.downsample2(pan_out3)
         p_concat_layer2 = torch.cat([down_feat2, fpn_out2], 1)
-        pan_out2 = self.Rep_n4(p_concat_layer2) # P4
+        pan_out2 = self.Rep_n4(p_concat_layer2)  # P4
 
         down_feat1 = self.downsample1(pan_out2)
         p_concat_layer1 = torch.cat([down_feat1, fpn_out1], 1)
-        pan_out1 = self.Rep_n5(p_concat_layer1) # P5
+        pan_out1 = self.Rep_n5(p_concat_layer1)  # P5
 
         down_feat0 = self.downsample0(pan_out1)
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
-        pan_out0 = self.Rep_n6(p_concat_layer0) # P6
+        pan_out0 = self.Rep_n6(p_concat_layer0)  # P6
 
         outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
 
         return outputs
+
 
 class Lite_EffiNeck(nn.Module):
 
@@ -1149,22 +1266,22 @@ class Lite_EffiNeck(nn.Module):
         self.upsample1 = nn.Upsample(scale_factor=2, mode='nearest')
 
         self.Csp_p4 = CSPBlock(
-            in_channels=unified_channels*2,
+            in_channels=unified_channels * 2,
             out_channels=unified_channels,
             kernel_size=5
         )
         self.Csp_p3 = CSPBlock(
-            in_channels=unified_channels*2,
+            in_channels=unified_channels * 2,
             out_channels=unified_channels,
             kernel_size=5
         )
         self.Csp_n3 = CSPBlock(
-            in_channels=unified_channels*2,
+            in_channels=unified_channels * 2,
             out_channels=unified_channels,
             kernel_size=5
         )
         self.Csp_n4 = CSPBlock(
-            in_channels=unified_channels*2,
+            in_channels=unified_channels * 2,
             out_channels=unified_channels,
             kernel_size=5
         )
@@ -1197,9 +1314,9 @@ class Lite_EffiNeck(nn.Module):
 
         (x2, x1, x0) = input
 
-        fpn_out0 = self.reduce_layer0(x0) #c5
-        x1 = self.reduce_layer1(x1)       #c4
-        x2 = self.reduce_layer2(x2)       #c3
+        fpn_out0 = self.reduce_layer0(x0)  # c5
+        x1 = self.reduce_layer1(x1)  # c4
+        x2 = self.reduce_layer2(x2)  # c3
 
         upsample_feat0 = self.upsample0(fpn_out0)
         f_concat_layer0 = torch.cat([upsample_feat0, x1], 1)
@@ -1207,19 +1324,18 @@ class Lite_EffiNeck(nn.Module):
 
         upsample_feat1 = self.upsample1(f_out1)
         f_concat_layer1 = torch.cat([upsample_feat1, x2], 1)
-        pan_out3 = self.Csp_p3(f_concat_layer1) #p3
+        pan_out3 = self.Csp_p3(f_concat_layer1)  # p3
 
         down_feat1 = self.downsample2(pan_out3)
         p_concat_layer1 = torch.cat([down_feat1, f_out1], 1)
-        pan_out2 = self.Csp_n3(p_concat_layer1)  #p4
+        pan_out2 = self.Csp_n3(p_concat_layer1)  # p4
 
         down_feat0 = self.downsample1(pan_out2)
         p_concat_layer2 = torch.cat([down_feat0, fpn_out0], 1)
-        pan_out1 = self.Csp_n4(p_concat_layer2)  #p5
+        pan_out1 = self.Csp_n4(p_concat_layer2)  # p5
 
         top_features = self.p6_conv_1(fpn_out0)
-        pan_out0 = top_features + self.p6_conv_2(pan_out1)  #p6
-
+        pan_out0 = top_features + self.p6_conv_2(pan_out1)  # p6
 
         outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
 

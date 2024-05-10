@@ -100,7 +100,7 @@ def get_model_info(model, img_size=640):
     """
     from thop import profile
     stride = 64 #32
-    img = torch.zeros((1, 3, stride, stride), device=next(model.parameters()).device)
+    img = torch.zeros((1, 6, stride, stride), device=next(model.parameters()).device)
 
     flops, params = profile(deepcopy(model), inputs=(img,), verbose=False)
     params /= 1e6

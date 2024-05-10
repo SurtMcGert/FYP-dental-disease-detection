@@ -26,6 +26,7 @@ class EfficientRep(nn.Module):
         assert channels_list is not None
         assert num_repeats is not None
         self.fuse_P2 = fuse_P2
+        self.num_of_attention_heads = 4
 
         self.stem = block(
             in_channels=in_channels,
@@ -96,6 +97,18 @@ class EfficientRep(nn.Module):
                 n=num_repeats[4],
                 block=block,
             ),
+            # channel_merge_layer(
+            #     in_channels=channels_list[4],
+            #     out_channels=channels_list[4],
+            #     kernel_size=5
+            # )
+        )
+
+        self.attention_block_5 = nn.Sequential(
+            MultiHeadedSelfAttention(
+                in_dim=channels_list[4],
+                num_heads=self.num_of_attention_heads
+            ),
             channel_merge_layer(
                 in_channels=channels_list[4],
                 out_channels=channels_list[4],
@@ -115,9 +128,15 @@ class EfficientRep(nn.Module):
         x = self.ERBlock_4(x)
         outputs.append(x)
         x = self.ERBlock_5(x)
+        x = self.attention_block_5(x)
         outputs.append(x)
 
-        return tuple(outputs)
+        attention_weights = None
+
+        if (self.training):
+            return tuple(outputs)
+        else:
+            return tuple(outputs), attention_weights
 
 
 class EfficientRep6(nn.Module):
@@ -143,6 +162,7 @@ class EfficientRep6(nn.Module):
         self.fuse_P2 = fuse_P2
 
         self.generate_heat_maps = generate_heat_maps
+        self.num_of_attention_heads = 4
 
         self.stem = block(
             in_channels=in_channels,
@@ -150,6 +170,13 @@ class EfficientRep6(nn.Module):
             kernel_size=3,
             stride=2
         )
+
+        # self.attention_block_1 = nn.Sequential(
+        #     MultiHeadedSelfAttention(
+        #         in_dim=channels_list[0],
+        #         num_heads=self.num_of_attention_heads
+        #     )
+        # )
 
         self.ERBlock_2 = nn.Sequential(
             block(
@@ -166,6 +193,13 @@ class EfficientRep6(nn.Module):
             )
         )
 
+        # self.attention_block_2 = nn.Sequential(
+        #     MultiHeadedSelfAttention(
+        #         in_dim=channels_list[1],
+        #         num_heads=self.num_of_attention_heads
+        #     )
+        # )
+
         self.ERBlock_3 = nn.Sequential(
             block(
                 in_channels=channels_list[1],
@@ -180,6 +214,13 @@ class EfficientRep6(nn.Module):
                 block=block,
             )
         )
+
+        # self.attention_block_3 = nn.Sequential(
+        #     MultiHeadedSelfAttention(
+        #         in_dim=channels_list[2],
+        #         num_heads=self.num_of_attention_heads
+        #     )
+        # )
 
         self.ERBlock_4 = nn.Sequential(
             block(
@@ -196,6 +237,13 @@ class EfficientRep6(nn.Module):
             )
         )
 
+        # self.attention_block_4 = nn.Sequential(
+        #     MultiHeadedSelfAttention(
+        #         in_dim=channels_list[3],
+        #         num_heads=self.num_of_attention_heads
+        #     )
+        # )
+
         self.ERBlock_5 = nn.Sequential(
             block(
                 in_channels=channels_list[3],
@@ -210,6 +258,13 @@ class EfficientRep6(nn.Module):
                 block=block,
             )
         )
+
+        # self.attention_block_5 = nn.Sequential(
+        #     MultiHeadedSelfAttention(
+        #         in_dim=channels_list[4],
+        #         num_heads=self.num_of_attention_heads
+        #     )
+        # )
 
         channel_merge_layer = SimSPPF if not cspsppf else SimCSPSPPF
 
@@ -233,11 +288,7 @@ class EfficientRep6(nn.Module):
             # )
         )
 
-        self.num_of_attention_heads = 4
-        # self.attention_layer = MultiHeadedSelfAttention(
-        #     channels_list[5], self.num_of_attention_heads)
-
-        self.attention_block = nn.Sequential(
+        self.attention_block_6 = nn.Sequential(
             MultiHeadedSelfAttention(
                 in_dim=channels_list[5],
                 num_heads=self.num_of_attention_heads
@@ -253,17 +304,22 @@ class EfficientRep6(nn.Module):
 
         outputs = []
         x = self.stem(x)
+        # x = self.attention_block_1(x)
         x = self.ERBlock_2(x)
+        # x = self.attention_block_2(x)
         if self.fuse_P2:
             outputs.append(x)
         x = self.ERBlock_3(x)
+        # x = self.attention_block_3(x)
         outputs.append(x)
         x = self.ERBlock_4(x)
+        # x = self.attention_block_4(x)
         outputs.append(x)
         x = self.ERBlock_5(x)
+        # x = self.attention_block_5(x)
         outputs.append(x)
         x = self.ERBlock_6(x)
-        x = self.attention_block(x)
+        x = self.attention_block_6(x)
         outputs.append(x)
 
         attention_weights = None
@@ -278,63 +334,69 @@ class MultiHeadedSelfAttention(nn.Module):
     """ Self attention Layer"""
 
     def __init__(self, in_dim, num_heads):
+        # make assertations
         assert in_dim % num_heads == 0, f"input_dim ({in_dim}) must be divisible by num_heads ({num_heads})"
         assert isinstance(
             in_dim, int), f"input_dim ({in_dim}) must be an integer"
         super(MultiHeadedSelfAttention, self).__init__()
+        # global class variables
         self.chanel_in = in_dim
         self.num_heads = num_heads
-        self.k_dim = in_dim / num_heads
+        self.k_dim = int(in_dim / num_heads)
 
-        self.conv_q = nn.Conv2d(
-            in_channels=in_dim, out_channels=in_dim // self.num_heads, kernel_size=1)
+        # initialise the projection convolutions
+        # self.conv_q = nn.Conv2d(
+        #     in_channels=in_dim, out_channels=in_dim, kernel_size=1)
         self.conv_k = nn.Conv2d(
-            in_channels=in_dim, out_channels=in_dim // self.num_heads, kernel_size=1)
+            in_channels=in_dim, out_channels=in_dim, kernel_size=1)
         self.conv_v = nn.Conv2d(
             in_channels=in_dim, out_channels=in_dim, kernel_size=1)
-        self.gamma = nn.Parameter(torch.zeros(1))
 
+        self.multihead_attn = nn.MultiheadAttention(
+            in_dim, num_heads, batch_first=True)
+
+        # initialise gamma and softmax
+        self.gamma = nn.Parameter(torch.zeros(1))
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x):
+        # get the input dimensions
         batch_size, C, width, height = x.size()
 
-        q = self.conv_q(x)
+        # project q, k, v
+        q = x  # self.conv_q(x)
         k = self.conv_k(x)
         v = self.conv_v(x)
 
-        q = q.view(batch_size, -1, width * height)
-        k = k.view(batch_size, -1, width * height)
-        v = v.view(batch_size, -1, width * height)
+        # collapse last two dimensions into one, width * height
+        q = q.view(batch_size, -1, width * height).permute(0, 2, 1)
+        k = k.view(batch_size, -1, width * height).permute(0, 2, 1)
+        v = v.view(batch_size, -1, width * height).permute(0, 2, 1)
 
-        # print(f"proj_q: {q.size()}")
-        # print(f"proj_k: {k.size()}")
-        # print(f"proj_v: {v.size()}")
+        with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=False, enable_mem_efficient=True):
+            out, attn = self.multihead_attn(q, k, v)
 
-        q_heads = q.view(batch_size, self.num_heads,
-                         -1, height * width)
-        k_heads = k.view(batch_size, self.num_heads,
-                         -1, height * width)
-        v_heads = v.view(batch_size, self.num_heads,
-                         -1, height * width)
+        # split each tensor into their heads
+        # q_heads = q.view(batch_size, self.num_heads,
+        #                  -1, height * width)
+        # k_heads = k.view(batch_size, self.num_heads,
+        #                  -1, height * width)
+        # v_heads = v.view(batch_size, self.num_heads,
+        #                  -1, height * width)
 
-        # print(f"q_heads: {q_heads.size()}")
-        # print(f"k_heads: {k_heads.size()}")
-        # print(f"v_heads: {v_heads.size()}")
+        # # calculate attention scores
+        # attention_scores = torch.matmul(
+        #     q_heads.transpose(-2, -1), k_heads) / math.sqrt(self.k_dim)
 
-        attention_scores = torch.matmul(
-            q_heads.transpose(-2, -1), k_heads) / math.sqrt(self.k_dim)
+        # # calculate attention weights
+        # attention_weights = self.softmax(attention_scores)
 
-        # print(f"attention_scores: {attention_scores.size()}")
-
-        attention_weights = self.softmax(attention_scores)
-
-        # print(f"attention_weights: {attention_weights.size()}")
-
-        out = torch.matmul(v_heads, attention_weights.transpose(-2, -1))
-        # print(f"out: {out.size()}")
+        # # calculate new feature embeddings
+        # out = torch.matmul(v_heads, attention_weights.transpose(-2, -1))
+        out = out.permute(0, 2, 1)
         out = out.view(batch_size, C, width, height)
 
+        # combine with origina input
         out = (self.gamma * out) + x
         return out
 

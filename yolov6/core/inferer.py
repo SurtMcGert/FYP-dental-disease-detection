@@ -52,7 +52,7 @@ class Inferer:
             self.half = False
 
         if self.device.type != 'cpu':
-            self.model(torch.zeros(1, 3, *self.img_size).to(self.device).type_as(
+            self.model(torch.zeros(1, 6, *self.img_size).to(self.device).type_as(
                 next(self.model.model.parameters())))  # warmup
 
         # Load data
@@ -198,31 +198,59 @@ class Inferer:
                             save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer.write(img_src)
 
+    # @staticmethod
+    # def preProcess_image(img):
+    #     """function to enhance image"""
+    #     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #     # create a CLAHE object.
+    #     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
+    #     # apply CLAHE to the image
+    #     claheImg = clahe.apply(img)
+
+    #     # combine the images into a 2 channel image
+    #     claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+    #     # Convert
+    #     claheImg = claheImg.transpose(
+    #         (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+
+    #     return claheImg
+
     @staticmethod
     def preProcess_image(img):
-        """function to enhance image"""
+        """function to enhance image and add extra edge detect layer"""
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # create a CLAHE object.
         clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
         # apply CLAHE to the image
         claheImg = clahe.apply(img)
 
+        # de-noise and blur CLAHE image
+        deNoise = cv2.fastNlMeansDenoising(claheImg, None, 20, 7, 30)
+        blur = cv2.GaussianBlur(deNoise, (5, 5), 5)
+
+        # apply canny edge detect
+        edgeDetectImg = cv2.Canny(blur, 45, 55)
+
         # combine the images into a 2 channel image
         claheImg = cv2.cvtColor(claheImg, cv2.COLOR_GRAY2BGR)
+        edgeDetectImg = cv2.cvtColor(edgeDetectImg, cv2.COLOR_GRAY2BGR)
         # Convert
         claheImg = claheImg.transpose(
             (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-
-        return claheImg
+        edgeDetectImg = edgeDetectImg.transpose(
+            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        channels = [claheImg, edgeDetectImg]
+        newImg = np.concatenate(channels, axis=0)
+        return newImg
 
     @staticmethod
     def process_image(img_src, img_size, stride, half):
         '''Process image before image inference.'''
         image = letterbox(img_src, img_size, stride=stride)[0]
         # Convert
-        # image = Inferer.preProcess_image(image)
-        image = image.transpose(
-            (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        image = Inferer.preProcess_image(image)
+        # image = image.transpose(
+        #     (2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
         image = torch.from_numpy(np.ascontiguousarray(image))
         image = image.half() if half else image.float()  # uint8 to fp16/32
         image /= 255  # 0 - 255 to 0.0 - 1.0

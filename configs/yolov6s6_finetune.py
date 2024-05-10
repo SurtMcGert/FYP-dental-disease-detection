@@ -1,21 +1,21 @@
 # YOLOv6n model
 model = dict(
     type='YOLOv6s6',
-    pretrained='weights/yolov6s6.pt',
+    pretrained='runs\\train\\semi_enhanced_large_sgd\\weights\\best_ckpt.pt',
     depth_multiple=0.33,
     width_multiple=0.50,
     backbone=dict(
         type='EfficientRep6',
         num_repeats=[1, 6, 12, 18, 6, 6],
         out_channels=[64, 128, 256, 512, 768, 1024],
-        fuse_P2=True, # if use RepBiFPANNeck6, please set fuse_P2 to True.
+        fuse_P2=True,  # if use RepBiFPANNeck6, please set fuse_P2 to True.
         cspsppf=True,
-        ),
+    ),
     neck=dict(
         type='RepBiFPANNeck6',
         num_repeats=[12, 12, 12, 12, 12, 12],
         out_channels=[512, 256, 128, 256, 512, 1024],
-        ),
+    ),
     head=dict(
         type='EffiDeHead',
         in_channels=[128, 256, 512, 1024],
@@ -25,7 +25,7 @@ model = dict(
         atss_warmup_epoch=4,
         iou_type='giou',
         use_dfl=False,
-        reg_max=0 #if use_dfl is False, please set reg_max to 0
+        reg_max=0  # if use_dfl is False, please set reg_max to 0
     )
 )
 
