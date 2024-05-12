@@ -121,3 +121,6 @@ data/dental_dataset
 
 #data cache
 .data_cache.json
+
+test
+test.ipynb
