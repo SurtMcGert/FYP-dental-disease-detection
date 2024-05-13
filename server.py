@@ -1,15 +1,4 @@
-import logging.config
-# from transformers import AutoModelForTokenClassification, pipeline, AutoTokenizer
-import transformers
-from transformers.pipelines import PIPELINE_REGISTRY
-import threading
-import time
-from queue import Queue
 import streamlit as st
-from annotated_text import annotated_text
-from collections import Counter, OrderedDict
-import pandas as pd
-import altair as alt
 import io
 
 # @param ["yolov6s", "yolov6n", "yolov6t"]
